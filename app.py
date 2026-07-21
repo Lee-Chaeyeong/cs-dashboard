@@ -200,8 +200,13 @@ if uploaded_file:
                 col1, col2 = st.columns(2)
                 with col1:
                     fig_pie = px.pie(monthly_summary, names='대분류', values='건수', hole=0.4, title=f"<b>7월 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
-                    fig_pie.update_traces(textinfo='percent+label', textfont_size=18)
-                    fig_pie.update_layout(title_font=dict(size=22), legend=dict(font=dict(size=18)))
+                    # 짤림 방지를 위해 textposition='inside' 및 여백 조절
+                    fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=16))
+                    fig_pie.update_layout(
+                        title_font=dict(size=22),
+                        legend=dict(font=dict(size=18)),
+                        margin=dict(t=80, b=50, l=40, r=40)
+                    )
                     st.plotly_chart(fig_pie, use_container_width=True)
                 with col2:
                     max_m_cnt = monthly_summary['건수'].max() if not monthly_summary.empty else 10
@@ -233,8 +238,8 @@ if uploaded_file:
                         res_inq_df.columns = ['문의 사항', '예약건수']
                         fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title="<b>7월 CS예약 문의사항별 분포</b>", color_discrete_sequence=px.colors.qualitative.Set3)
                         fig_res_inq.update_layout(showlegend=False, height=480, xaxis_title="<b>문의 사항</b>", yaxis_title="<b>예약건수 (건)</b>")
-                        # 텍스트가 조금 긴 경우가 있으므로 x_size를 약간 조정
-                        fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), x_size=15)
+                        # 운행 지역 차트와 동일하게 font 크기 통일 적용!
+                        fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max())
                         st.plotly_chart(fig_res_inq, use_container_width=True)
             else:
                 st.warning("CS예약(NEW) 시트에서 26년 7월 예약 데이터를 찾을 수 없습니다.")
@@ -261,7 +266,6 @@ if uploaded_file:
                 
                 st.markdown("---")
                 
-                # 서브 탭 2개로 완벽 정돈
                 c_subtab1, c_subtab2 = st.tabs([
                     "📋 주차별 해지 사유 개별차트",
                     "📊 7월 해지 종합 차트"
@@ -291,7 +295,7 @@ if uploaded_file:
                                     title=f"<b>해지 OB {week_name} 완료건 해지사유별 건수 (총 {len(df_cw)}건)</b>",
                                     color_discrete_sequence=px.colors.qualitative.Pastel
                                 )
-                                fig_cw_reason.update_layout(showlegend=False, height=480, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
+                                fig_cw_reason.update_layout(showlegend=False, height=450, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                                 fig_cw_reason = apply_chart_style(fig_cw_reason, x_series=r_summary['해지사유'], max_val=max_rc)
                                 st.plotly_chart(fig_cw_reason, use_container_width=True)
                             else:
