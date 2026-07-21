@@ -84,7 +84,7 @@ def clean_data_text(df):
 
 @st.cache_data(ttl=60)
 def load_all_workbook_data(gsheet_url, uploaded_file):
-    excel_source = None
+    excel_bytes = None
     if gsheet_url:
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', gsheet_url)
         if match:
@@ -92,24 +92,38 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
             export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
             res = requests.get(export_url)
             if res.status_code == 200:
-                excel_source = io.BytesIO(res.content)
+                excel_bytes = res.content
     elif uploaded_file:
-        excel_source = uploaded_file
+        excel_bytes = uploaded_file.getvalue()
         
-    if not excel_source:
-        return None, None, None, []
+    if not excel_bytes:
+        return {}, pd.DataFrame(), pd.DataFrame(), []
 
-    xls = pd.ExcelFile(excel_source)
-    sheets = xls.sheet_names
+    xls_dict = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=None, header=None)
+    sheets = list(xls_dict.keys())
     
     # 월별 CS 인입 시트 감지 (예: '26년7월', '26년8월')
     cs_sheets = [s for s in sheets if '년' in s and '월' in s]
     cs_sheets.sort()
     
+    cs_sheets_dict = {}
+    for s in cs_sheets:
+        raw = xls_dict[s]
+        header_idx = 0
+        for i in range(min(15, len(raw))):
+            row_str = [str(x).strip() for x in raw.iloc[i].tolist()]
+            if '상담일자' in row_str or '주차' in row_str or '분류' in row_str:
+                header_idx = i
+                break
+        df_sheet = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=s, header=header_idx)
+        df_sheet.columns = [str(c).strip() for c in df_sheet.columns]
+        df_sheet = clean_data_text(df_sheet)
+        cs_sheets_dict[s] = df_sheet
+
     # CS예약(NEW)
     df_res_all = pd.DataFrame()
     if 'CS예약(NEW)' in sheets:
-        df_res_all = pd.read_excel(xls, sheet_name='CS예약(NEW)')
+        df_res_all = pd.read_excel(io.BytesIO(excel_bytes), sheet_name='CS예약(NEW)')
         df_res_all = clean_data_text(df_res_all)
         if '예약시간' in df_res_all.columns:
             df_res_all['예약시간_dt'] = pd.to_datetime(df_res_all['예약시간'], errors='coerce')
@@ -119,32 +133,32 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
     for s_name in sheets:
         if ('해지' in s_name or '해제' in s_name) and 'OB' in s_name:
             if '2025' not in s_name and '2024' not in s_name and '2023' not in s_name:
-                raw_c = pd.read_excel(xls, sheet_name=s_name, header=None)
+                raw_c = xls_dict[s_name]
                 header_idx = 0
                 for i in range(min(10, len(raw_c))):
                     row_str = [str(x).strip() for x in raw_c.iloc[i].tolist()]
                     if 'OB일자' in row_str or '해지사유' in row_str or '인입날짜' in row_str:
                         header_idx = i
                         break
-                df_c_all = pd.read_excel(xls, sheet_name=s_name, header=header_idx)
+                df_c_all = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=s_name, header=header_idx)
                 df_c_all.columns = [str(c).strip() for c in df_c_all.columns]
                 df_c_all = clean_data_text(df_c_all)
                 if 'OB일자' in df_c_all.columns:
                     df_c_all['OB일자_dt'] = pd.to_datetime(df_c_all['OB일자'], errors='coerce')
                 break
 
-    return xls, df_res_all, df_c_all, cs_sheets
+    return cs_sheets_dict, df_res_all, df_c_all, cs_sheets
 
-xls_file, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
+cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
 
-if xls_file:
+if cs_sheets_dict:
     st.sidebar.markdown("---")
     st.sidebar.header("📅 분석 대상 월 선택")
     
     select_options = available_cs_sheets.copy()
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options)
     
-    # 선택된 월 파싱 (예: '26년7월' -> year: 2026, month: 7)
+    # 선택된 월 파싱
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
     if m_match:
         target_year = 2000 + int(m_match.group(1))
@@ -152,17 +166,8 @@ if xls_file:
     else:
         target_year, target_month = 2026, 7
 
-    # 1. 선택된 월 CS 인입 로드
-    raw = pd.read_excel(xls_file, sheet_name=selected_month_sheet, header=None)
-    header_idx = 0
-    for i in range(min(15, len(raw))):
-        row_str = [str(x).strip() for x in raw.iloc[i].tolist()]
-        if '상담일자' in row_str or '주차' in row_str or '분류' in row_str:
-            header_idx = i
-            break
-    df = pd.read_excel(xls_file, sheet_name=selected_month_sheet, header=header_idx)
-    df.columns = [str(c).strip() for c in df.columns]
-    df = clean_data_text(df)
+    # 1. 선택된 월 CS 인입
+    df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
 
     # 2. 선택된 월 CS예약 필터링
     df_res_7 = pd.DataFrame()
