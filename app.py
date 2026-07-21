@@ -15,6 +15,7 @@ st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
+    value="[https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=378177385#gid=378177385]",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help="구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야 합니다."
 )
