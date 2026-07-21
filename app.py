@@ -9,7 +9,7 @@ import re
 st.set_page_config(page_title="BTX CS 종합 자동 분석 대시보드", layout="wide")
 
 st.title("📊 BTX CS 종합 자동 분석 대시보드")
-st.caption("'26년7월' CS 인입 데이터, CS예약(NEW), 해지OB 시트를 구글 시트 및 엑셀과 실시간 연동하여 시각화합니다.")
+st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
 # 사이드바 입력 및 파일 업로드
 st.sidebar.header("🔗 데이터 연동 설정")
@@ -26,7 +26,6 @@ if st.sidebar.button("🔄 최신 데이터 새로고침"):
     st.rerun()
 
 def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19, y_size=17, title_size=22, is_group=False, force_bar_width=False):
-    """막대 두께를 고정하고, 모든 글자를 대폭 키우며 100% 볼드체로 강제 적용하는 함수"""
     fig.update_traces(
         texttemplate='<b>%{y:.0f}건</b>',
         textposition='outside',
@@ -75,7 +74,6 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
     return fig
 
 def clean_data_text(df):
-    """데이터프레임 내 혹시 모를 오탈자 치환"""
     if df.empty:
         return df
     df.columns = [str(c).replace('해제', '해지') for c in df.columns]
@@ -85,10 +83,8 @@ def clean_data_text(df):
     return df
 
 @st.cache_data(ttl=60)
-def load_data_from_source(gsheet_url, uploaded_file):
+def load_all_workbook_data(gsheet_url, uploaded_file):
     excel_source = None
-    
-    # 1. 구글 시트 URL이 입력된 경우
     if gsheet_url:
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', gsheet_url)
         if match:
@@ -97,52 +93,29 @@ def load_data_from_source(gsheet_url, uploaded_file):
             res = requests.get(export_url)
             if res.status_code == 200:
                 excel_source = io.BytesIO(res.content)
-            else:
-                st.error("구글 시트를 불러올 수 없습니다. '공유' 권한이 '링크가 있는 모든 사용자'로 설정되었는지 확인해 주세요.")
-                return None, None, None, None
-        else:
-            st.error("올바른 구글 시트 URL 형태가 아닙니다.")
-            return None, None, None, None
-            
-    # 2. 구글 시트가 없고 파일 업로드가 있는 경우
     elif uploaded_file:
         excel_source = uploaded_file
-    else:
-        return None, None, None, None
+        
+    if not excel_source:
+        return None, None, None, []
 
     xls = pd.ExcelFile(excel_source)
     sheets = xls.sheet_names
     
-    # 1. CS Raw Data ('26년7월')
-    df_cs, cs_sheet_name = pd.DataFrame(), ""
-    for s in sheets:
-        if '26년7월' in s or '7월' in s:
-            cs_sheet_name = s
-            raw = pd.read_excel(xls, sheet_name=s, header=None)
-            header_idx = 0
-            for i in range(min(15, len(raw))):
-                row_str = [str(x).strip() for x in raw.iloc[i].tolist()]
-                if '상담일자' in row_str or '주차' in row_str or '분류' in row_str:
-                    header_idx = i
-                    break
-            df_cs = pd.read_excel(xls, sheet_name=s, header=header_idx)
-            df_cs.columns = [str(c).strip() for c in df_cs.columns]
-            df_cs = clean_data_text(df_cs)
-            break
-            
-    # 2. CS Reservation ('CS예약(NEW)')
-    df_res_7 = pd.DataFrame()
+    # 월별 CS 인입 시트 감지 (예: '26년7월', '26년8월')
+    cs_sheets = [s for s in sheets if '년' in s and '월' in s]
+    cs_sheets.sort()
+    
+    # CS예약(NEW)
+    df_res_all = pd.DataFrame()
     if 'CS예약(NEW)' in sheets:
-        df_res = pd.read_excel(xls, sheet_name='CS예약(NEW)')
-        df_res = clean_data_text(df_res)
-        if 'CS비고' in df_res.columns:
-            df_res_7 = df_res[df_res['CS비고'] == '26년7월']
-        if df_res_7.empty and '예약시간' in df_res.columns:
-            df_res['예약시간_dt'] = pd.to_datetime(df_res['예약시간'], errors='coerce')
-            df_res_7 = df_res[(df_res['예약시간_dt'].dt.year == 2026) & (df_res['예약시간_dt'].dt.month == 7)]
+        df_res_all = pd.read_excel(xls, sheet_name='CS예약(NEW)')
+        df_res_all = clean_data_text(df_res_all)
+        if '예약시간' in df_res_all.columns:
+            df_res_all['예약시간_dt'] = pd.to_datetime(df_res_all['예약시간'], errors='coerce')
 
-    # 3. Cancel OB ('해지OB')
-    df_c_7 = pd.DataFrame()
+    # 해지OB
+    df_c_all = pd.DataFrame()
     for s_name in sheets:
         if ('해지' in s_name or '해제' in s_name) and 'OB' in s_name:
             if '2025' not in s_name and '2024' not in s_name and '2023' not in s_name:
@@ -153,35 +126,70 @@ def load_data_from_source(gsheet_url, uploaded_file):
                     if 'OB일자' in row_str or '해지사유' in row_str or '인입날짜' in row_str:
                         header_idx = i
                         break
-                df_c = pd.read_excel(xls, sheet_name=s_name, header=header_idx)
-                df_c.columns = [str(c).strip() for c in df_c.columns]
-                df_c = clean_data_text(df_c)
-                
-                if 'OB일자' in df_c.columns:
-                    df_c['OB일자_dt'] = pd.to_datetime(df_c['OB일자'], errors='coerce')
-                    df_c_7 = df_c[(df_c['OB일자_dt'].dt.year == 2026) & (df_c['OB일자_dt'].dt.month == 7)].copy()
-                    if df_c_7.empty:
-                        df_c_7 = df_c[df_c['OB일자'].astype(str).str.contains('2026.07|2026-07|2026. 7|2026-7')].copy()
-
-                    def assign_week(row):
-                        dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
-                        if dt is None: return '1주차'
-                        d = dt.day
-                        if d <= 5: return '1주차'
-                        elif d <= 12: return '2주차'
-                        elif d <= 19: return '3주차'
-                        else: return '4주차'
-
-                    df_c_7['주차'] = df_c_7.apply(assign_week, axis=1)
+                df_c_all = pd.read_excel(xls, sheet_name=s_name, header=header_idx)
+                df_c_all.columns = [str(c).strip() for c in df_c_all.columns]
+                df_c_all = clean_data_text(df_c_all)
+                if 'OB일자' in df_c_all.columns:
+                    df_c_all['OB일자_dt'] = pd.to_datetime(df_c_all['OB일자'], errors='coerce')
                 break
 
-    return df_cs, cs_sheet_name, df_res_7, df_c_7
+    return xls, df_res_all, df_c_all, cs_sheets
 
-# 데이터 로드 실행
-df, sheet_name, df_res_7, df_c_7 = load_data_from_source(gsheet_url, uploaded_file)
+xls_file, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
 
-if df is not None and ('분류' in df.columns or '주차' in df.columns):
-    st.success(f"✅ CS 인입({sheet_name}: {len(df)}건) / CS예약({len(df_res_7)}건) / 해지OB({len(df_c_7)}건) 데이터 실시간 연동 완료!")
+if xls_file:
+    st.sidebar.markdown("---")
+    st.sidebar.header("📅 분석 대상 월 선택")
+    
+    select_options = available_cs_sheets.copy()
+    selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options)
+    
+    # 선택된 월 파싱 (예: '26년7월' -> year: 2026, month: 7)
+    m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
+    if m_match:
+        target_year = 2000 + int(m_match.group(1))
+        target_month = int(m_match.group(2))
+    else:
+        target_year, target_month = 2026, 7
+
+    # 1. 선택된 월 CS 인입 로드
+    raw = pd.read_excel(xls_file, sheet_name=selected_month_sheet, header=None)
+    header_idx = 0
+    for i in range(min(15, len(raw))):
+        row_str = [str(x).strip() for x in raw.iloc[i].tolist()]
+        if '상담일자' in row_str or '주차' in row_str or '분류' in row_str:
+            header_idx = i
+            break
+    df = pd.read_excel(xls_file, sheet_name=selected_month_sheet, header=header_idx)
+    df.columns = [str(c).strip() for c in df.columns]
+    df = clean_data_text(df)
+
+    # 2. 선택된 월 CS예약 필터링
+    df_res_7 = pd.DataFrame()
+    if not df_res_all.empty:
+        if 'CS비고' in df_res_all.columns and selected_month_sheet in df_res_all['CS비고'].values:
+            df_res_7 = df_res_all[df_res_all['CS비고'] == selected_month_sheet]
+        elif '예약시간_dt' in df_res_all.columns:
+            df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
+
+    # 3. 선택된 월 해지OB 필터링
+    df_c_7 = pd.DataFrame()
+    if not df_c_all.empty:
+        if 'OB일자_dt' in df_c_all.columns:
+            df_c_7 = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
+            
+            def assign_week(row):
+                dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
+                if dt is None: return '1주차'
+                d = dt.day
+                if d <= 5: return '1주차'
+                elif d <= 12: return '2주차'
+                elif d <= 19: return '3주차'
+                else: return '4주차'
+
+            df_c_7['주차'] = df_c_7.apply(assign_week, axis=1)
+
+    st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df)}건) / CS예약({len(df_res_7)}건) / 해지OB({len(df_c_7)}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -191,14 +199,14 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
         
     tab1, tab2, tab3, tab4 = st.tabs([
         "📅 주차별 개별 차트 (1주차~4주차)", 
-        "🍩 7월 월마감 & CS예약 현황",
-        "🚨 26년 7월 해지OB 세부 분석",
+        f"🍩 {selected_month_sheet} 월마감 & CS예약 현황",
+        f"🚨 {selected_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
     # TAB 1: 주차별 CS 인입 차트
     with tab1:
-        st.subheader("📅 주차별 CS 인입 현황 (1주차 ~ 4주차 개별 세로 막대차트)")
+        st.subheader(f"📅 {selected_month_sheet} 주차별 CS 인입 현황 (1주차 ~ 4주차 개별 세로 막대차트)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
         col_left, col_right = st.columns(2)
         
@@ -224,9 +232,9 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                 else:
                     st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
-    # TAB 2: 7월 월마감 & CS예약 현황
+    # TAB 2: 월마감 & CS예약 현황
     with tab2:
-        st.subheader("🍩 7월 월마감 전체 CS 인입 비중 및 CS예약 현황")
+        st.subheader(f"🍩 {selected_month_sheet} 월마감 전체 CS 인입 비중 및 CS예약 현황")
         if cat_col:
             monthly_summary = df[cat_col].value_counts().reset_index()
             monthly_summary.columns = ['대분류', '건수']
@@ -235,7 +243,7 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
             
             col1, col2 = st.columns(2)
             with col1:
-                fig_pie = px.pie(monthly_summary, names='대분류', values='건수', hole=0.4, title=f"<b>7월 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                fig_pie = px.pie(monthly_summary, names='대분류', values='건수', hole=0.4, title=f"<b>{selected_month_sheet} 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
                 fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=16))
                 fig_pie.update_layout(
                     title_font=dict(size=22),
@@ -245,16 +253,16 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                 st.plotly_chart(fig_pie, use_container_width=True)
             with col2:
                 max_m_cnt = monthly_summary['건수'].max() if not monthly_summary.empty else 10
-                fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', color='대분류', title="<b>7월 누적 대분류별 인입 건수 순위</b>", color_discrete_sequence=px.colors.qualitative.Bold)
+                fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', color='대분류', title=f"<b>{selected_month_sheet} 누적 대분류별 인입 건수 순위</b>", color_discrete_sequence=px.colors.qualitative.Bold)
                 fig_m_bar.update_layout(showlegend=False, height=500, xaxis_title="<b>대분류</b>", yaxis_title="<b>건수 (건)</b>")
                 fig_m_bar = apply_chart_style(fig_m_bar, x_series=monthly_summary['대분류'], max_val=max_m_cnt, force_bar_width=True)
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
         st.markdown("---")
-        st.subheader("📅 26년 7월 CS예약(NEW) 현황")
+        st.subheader(f"📅 {selected_month_sheet} CS예약(NEW) 현황")
         if not df_res_7.empty:
             m1, m2 = st.columns(2)
-            m1.metric("📌 7월 누적 CS 상담 예약 건수", f"{len(df_res_7)} 건")
+            m1.metric(f"📌 {selected_month_sheet} 누적 CS 상담 예약 건수", f"{len(df_res_7)} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
             m2.metric("📌 최다 예약 운행 지역", f"{top_res_region}")
             
@@ -263,7 +271,7 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                 if '운행 지역' in df_res_7.columns:
                     res_reg_df = df_res_7['운행 지역'].value_counts().reset_index()
                     res_reg_df.columns = ['운행 지역', '예약건수']
-                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title="<b>7월 CS예약 지역별 분포</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b>{selected_month_sheet} CS예약 지역별 분포</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_res_reg.update_layout(showlegend=False, height=480, xaxis_title="<b>운행 지역</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_reg = apply_chart_style(fig_res_reg, x_series=res_reg_df['운행 지역'], max_val=res_reg_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_reg, use_container_width=True)
@@ -271,16 +279,16 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                 if '문의 사항' in df_res_7.columns:
                     res_inq_df = df_res_7['문의 사항'].value_counts().reset_index()
                     res_inq_df.columns = ['문의 사항', '예약건수']
-                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title="<b>7월 CS예약 문의사항별 분포</b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b>{selected_month_sheet} CS예약 문의사항별 분포</b>", color_discrete_sequence=px.colors.qualitative.Set3)
                     fig_res_inq.update_layout(showlegend=False, height=480, xaxis_title="<b>문의 사항</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
-            st.warning("CS예약(NEW) 시트에서 26년 7월 예약 데이터를 찾을 수 없습니다.")
+            st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 3: 26년 7월 해지OB 세부 분석
+    # TAB 3: 해지OB 세부 분석
     with tab3:
-        st.subheader("🚨 26년 7월 해지OB 세부 분석")
+        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석")
         
         if not df_c_7.empty:
             total_cancel = len(df_c_7)
@@ -300,7 +308,7 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
             
             c_subtab1, c_subtab2 = st.tabs([
                 "📋 주차별 해지 사유 개별차트",
-                "📊 7월 해지 종합 차트"
+                f"📊 {selected_month_sheet} 해지 종합 차트"
             ])
             
             df_c_7_completed = df_c_7[df_c_7['OB여부'].astype(str).str.contains('완료')].copy() if 'OB여부' in df_c_7.columns else df_c_7.copy()
@@ -332,7 +340,7 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                             st.info(f"{week_name} 완료된 해지 데이터가 없습니다.")
 
             with c_subtab2:
-                st.subheader("📊 7월 해지사유 & 지역별 종합 차트 (완료건 기준)")
+                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (완료건 기준)")
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
                     if '해지사유' in df_c_7_completed.columns:
@@ -340,7 +348,7 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                         reason_df.columns = ['해지사유', '건수']
                         max_r_cnt = reason_df['건수'].max() if not reason_df.empty else 10
                         
-                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>7월 완료건 해지사유별 건수 (총 {len(df_c_7_completed)}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>{selected_month_sheet} 완료건 해지사유별 건수 (총 {len(df_c_7_completed)}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
                         fig_reason.update_layout(showlegend=False, height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                         fig_reason = apply_chart_style(fig_reason, x_series=reason_df['해지사유'], max_val=max_r_cnt, force_bar_width=True)
                         st.plotly_chart(fig_reason, use_container_width=True)
@@ -351,17 +359,17 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
                         reg_reason_df = reg_reason_pivot[reg_reason_pivot['건수'] > 0]
                         max_rr_cnt = reg_reason_df['건수'].max() if not reg_reason_df.empty else 10
                         
-                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title="<b>7월 완료건 지역별 & 해지사유별 건수 비교</b>", color_discrete_sequence=px.colors.qualitative.Set2)
+                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title=f"<b>{selected_month_sheet} 완료건 지역별 & 해지사유별 건수 비교</b>", color_discrete_sequence=px.colors.qualitative.Set2)
                         fig_reg_reason.update_layout(height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>", legend_title="<b>지역</b>")
                         fig_reg_reason = apply_chart_style(fig_reg_reason, x_series=reg_reason_df['해지사유'], max_val=max_rr_cnt, is_group=True)
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
 
         else:
-            st.warning("해지OB 시트에서 2026년 7월 해지 데이터를 찾을 수 없습니다.")
+            st.warning(f"해지OB 시트에서 {selected_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
     # TAB 4: AI 인사이트 리포트
     with tab4:
-        st.subheader("🤖 AI 자동 생성 종합 분석 보고서")
+        st.subheader(f"🤖 {selected_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
             monthly_summary = df[cat_col].value_counts().reset_index()
             monthly_summary.columns = ['대분류', '건수']
@@ -373,15 +381,10 @@ if df is not None and ('분류' in df.columns or '주차' in df.columns):
             top_pct = monthly_summary.iloc[0]['비중(%)']
             
             st.markdown(f"""
-            ### 📌 7월 CS 종합 핵심 요약
+            ### 📌 {selected_month_sheet} CS 종합 핵심 요약
             1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.
-            2. **상담 예약 현황**: **7월 총 {len(df_res_7)}건**의 상담 예약이 인입되었으며, 부가세/종소세 세금 문의(24건)와 부산 지역(31건)에 집중되었습니다.
-            3. **해지 OB 현황**: **7월 총 {len(df_c_7)}건** 해지 접수 중 **23건 최종 완료**, **4건 해지 취소(가맹유지 방어)**를 달성했습니다.
-               - 최종 완료 기준 주요 해지 사유는 **차량판매(9건)** 및 **배차불만(5건)**이었습니다.
-            
-            ### 💡 AI 권장 대응 전략
-            * **1주차 해지 방어 성과 확산**: 1주차에 해지 방어(취소 3건) 성과가 집중되었으므로, 해당 방어 사례 매뉴얼을 팀 내 공유 추천.
-            * **배차불만 해지 방어책 강화**: 해지사유 중 배차불만 관련 발생 지역에 대한 배차 알고리즘 개선 및 개별 모니터링 필요.
+            2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.
+            3. **해지 OB 현황**: **{selected_month_sheet} 총 {len(df_c_7)}건** 해지 접수 중 **{completed_cnt}건 최종 완료**, **{cancelled_cnt}건 해지 취소(가맹유지 방어)**를 달성했습니다.
             """)
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
