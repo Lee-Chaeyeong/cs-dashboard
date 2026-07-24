@@ -264,13 +264,17 @@ if cs_sheets_dict:
                 fig_m_bar = apply_chart_style(fig_m_bar, x_series=monthly_summary['대분류'], max_val=max_m_cnt, force_bar_width=True)
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
-        st.markdown("---")
-        st.subheader(f"📅 {selected_month_sheet} CS예약(NEW) 현황")
+       st.markdown("---")
+        st.subheader(f"📅 {selected_month_sheet} CS예약(NEW) 및 OB 현황")
         if not df_res_7.empty:
-            m1, m2 = st.columns(2)
+            m1, m2, m3 = st.columns(3)
             m1.metric(f"📌 {selected_month_sheet} 누적 CS 상담 예약 건수", f"{len(df_res_7)} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
             m2.metric("📌 최다 예약 운행 지역", f"{top_res_region}")
+            
+            # O열 (OB) 데이터가 있으면 빈칸을 제외하고 건수 계산
+            ob_cnt = len(df[df['OB'].notna() & (df['OB'].astype(str).str.strip() != '')]) if 'OB' in df.columns else 0
+            m3.metric(f"📞 {selected_month_sheet} OB 건수", f"{ob_cnt} 건")
             
             r_col1, r_col2 = st.columns(2)
             with r_col1:
