@@ -182,8 +182,40 @@ if cs_sheets_dict:
     else:
         target_year, target_month = 2026, 7
 
-    # 1. 선택된 월 CS 인입
+    # 1. 선택된 월 CS 인입 데이터 로드
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
+
+    # =========================================================================
+    # ★ 핵심 수정 파트: 월별 시트의 '주차' 규칙을 스스로 학습해서 뽑아냅니다 ★
+    # =========================================================================
+    dynamic_week_ranges = []
+    
+    if not df.empty:
+        week_col_main = '주차' if '주차' in df.columns else None
+        date_col_main = None
+        for c in df.columns:
+            c_str = str(c).replace(' ', '')
+            if any(kw in c_str for kw in ['상담일자', '일자', '날짜', '접수일', '시간']):
+                date_col_main = c
+                break
+                
+        if week_col_main and date_col_main:
+            temp_df = df.copy()
+            temp_df['__dt__'] = pd.to_datetime(temp_df[date_col_main], errors='coerce')
+            temp_df = temp_df.dropna(subset=['__dt__', week_col_main])
+            
+            # 주차별로 날짜의 최소/최댓값을 구해서 "이 달의 주차 달력"을 만듭니다.
+            for w_name, grp in temp_df.groupby(week_col_main):
+                w_str = str(w_name).strip()
+                if '주' in w_str:
+                    dynamic_week_ranges.append({
+                        'min_d': grp['__dt__'].min().date(),
+                        'max_d': grp['__dt__'].max().date(),
+                        'week_name': w_str
+                    })
+            # 날짜순으로 정렬
+            dynamic_week_ranges.sort(key=lambda x: x['min_d'])
+    # =========================================================================
 
     # 2. 선택된 월 CS예약 필터링
     df_res_7 = pd.DataFrame()
@@ -193,27 +225,44 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 구글 시트 주차 강제 인식 및 임의 계산 차단 ★)
-    df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
-    df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
+    # 3. 선택된 월 해지OB 필터링 (★ 월별 시트에서 학습한 규칙을 그대로 적용 ★)
+    df_c_month_raw = pd.DataFrame() 
+    df_c_7 = pd.DataFrame()        
     
     if not df_c_all.empty and 'OB일자_dt' in df_c_all.columns:
         # D열(OB일자) 기준으로 해당 월 데이터 전체 추출
         df_c_month_raw = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
         
-        # ★ 완벽하게 '주차' 열을 찾아 구글 시트 값을 100% 그대로 반영합니다.
-        week_col_found = False
-        for col in df_c_month_raw.columns:
-            col_name = str(col).strip()
-            # 열 이름에 '주' 또는 '주차'가 포함되어 있으면 구글 시트 값을 무조건 사용
-            if '주' in col_name or '주차' in col_name:
-                df_c_month_raw['주차'] = df_c_month_raw[col]
-                week_col_found = True
-                break
+        # 해지 OB 시트의 날짜를 방금 학습한 달력에 끼워 맞춥니다.
+        def assign_dynamic_week(row):
+            dt = row['OB일자_dt']
+            if pd.isna(dt): return '1주차'
+            d_val = dt.date()
+            
+            # 학습한 달력이 있다면
+            if dynamic_week_ranges:
+                # 1. 완벽하게 그 범위 안에 들어가는지 확인
+                for w_info in dynamic_week_ranges:
+                    if w_info['min_d'] <= d_val <= w_info['max_d']:
+                        return w_info['week_name']
                 
-        # 만약 구글 시트에 주차 열이 정말로 하나도 없을 때만 기본값 생성 (안전장치)
-        if not week_col_found:
-             df_c_month_raw['주차'] = '1주차'
+                # 2. 휴일 등으로 CS 데이터가 비어있던 날짜에 해지OB가 들어온 경우 (사이 날짜 편입)
+                if d_val < dynamic_week_ranges[0]['min_d']:
+                    return dynamic_week_ranges[0]['week_name']
+                if d_val > dynamic_week_ranges[-1]['max_d']:
+                    return dynamic_week_ranges[-1]['week_name']
+                for i in range(len(dynamic_week_ranges) - 1):
+                    if dynamic_week_ranges[i]['max_d'] < d_val < dynamic_week_ranges[i+1]['min_d']:
+                        # 보통 주말이므로 이전 주차로 편입
+                        return dynamic_week_ranges[i]['week_name']
+            
+            # 혹시라도 월별 시트에 데이터가 아예 없어 학습 실패 시 최후의 보루 (기계적 7일 나눔)
+            day_val = d_val.day
+            w_num = (day_val - 1) // 7 + 1
+            if w_num > 4: w_num = 4
+            return f"{w_num}주차"
+
+        df_c_month_raw['주차'] = df_c_month_raw.apply(assign_dynamic_week, axis=1)
             
         # 오직 '완료' 2글자와 일치하는 건만 추출 (공백 제거 후)
         if 'OB여부' in df_c_month_raw.columns:
@@ -343,7 +392,6 @@ if cs_sheets_dict:
             c2.metric("✅ 실 해지 완료 (차트반영)", f"{completed_cnt} 건")
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt} 건")
             
-            # 줄바꿈과 폰트 크기 조절을 통해 짤림 방지 및 가독성 개선
             with c4:
                 st.markdown("""<div style="font-size: 14px; color: rgba(49, 51, 63, 0.6); margin-bottom: 8px;">🏷️ 해지완료 가맹 상품 구성</div>""", unsafe_allow_html=True)
                 if prod_counts:
