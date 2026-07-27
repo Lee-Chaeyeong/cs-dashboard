@@ -178,30 +178,34 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 완료 및 해지 취소만 반영 / 주차 덮어쓰기 금지 적용 ★)
-    df_c_7 = pd.DataFrame()
-    if not df_c_all.empty:
-        # 무조건 D열(OB일자)을 기준으로 월을 판별하여 데이터를 가져옵니다.
-        if 'OB일자_dt' in df_c_all.columns:
-            df_c_7 = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
+    # 3. 선택된 월 해지OB 필터링 (★ 오직 [완료] 건만 엄격 반영 ★)
+    df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
+    df_c_7 = pd.DataFrame()        # 순수 해지 완료건 분석용
+    
+    if not df_c_all.empty and 'OB일자_dt' in df_c_all.columns:
+        # D열(OB일자) 기준으로 해당 월 데이터 전체 추출
+        df_c_month_raw = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
+        
+        # '주차' 열 보존 또는 자동 생성
+        if '주차' not in df_c_month_raw.columns:
+            def assign_week(row):
+                dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
+                if dt is None: return '1주차'
+                d = dt.day
+                if d <= 7: return '1주차'
+                elif d <= 14: return '2주차'
+                elif d <= 21: return '3주차'
+                else: return '4주차'
+            df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week, axis=1)
             
-            # 여기서 부재, 문발 등은 다 날리고 '완료'와 '해지 취소'만 남깁니다.
-            if 'OB여부' in df_c_7.columns:
-                df_c_7 = df_c_7[df_c_7['OB여부'].astype(str).str.contains('완료|해지 취소', na=False)].copy()
-            
-            # ★ 핵심 수정: 구글 시트에 이미 '주차' 열이 있다면 절대 덮어쓰지 않고 시트 데이터를 존중합니다!
-            if '주차' not in df_c_7.columns:
-                def assign_week(row):
-                    dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
-                    if dt is None: return '1주차'
-                    d = dt.day
-                    if d <= 7: return '1주차'
-                    elif d <= 14: return '2주차'
-                    elif d <= 21: return '3주차'
-                    else: return '4주차'
-                df_c_7['주차'] = df_c_7.apply(assign_week, axis=1)
+        # 순수 해지 [완료] 건만 쏙 추출 ('완료' 포함하고 '취소' 제외)
+        if 'OB여부' in df_c_month_raw.columns:
+            ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
+            df_c_7 = df_c_month_raw[ob_status.str.contains('완료', na=False) & ~ob_status.str.contains('취소', na=False)].copy()
+        else:
+            df_c_7 = df_c_month_raw.copy()
 
-    st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df)}건) / CS예약({len(df_res_7)}건) / 유효 해지OB({len(df_c_7)}건) 데이터 분석 완료!")
+    st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df)}건) / CS예약({len(df_res_7)}건) / 실해지 완료({len(df_c_7)}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -302,23 +306,27 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 3: 해지OB 세부 분석
+    # TAB 3: 해지OB 세부 분석 (오직 순수 [완료] 건만 차트 및 분석에 반영)
     with tab3:
-        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (완료 및 해지취소 건만 반영)")
+        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실해지 완료건만 반영)")
         
-        if not df_c_7.empty:
-            total_cancel = len(df_c_7)
-            completed_cnt = len(df_c_7[df_c_7['OB여부'].astype(str).str.contains('완료')]) if 'OB여부' in df_c_7.columns else 0
-            cancelled_cnt = len(df_c_7[df_c_7['OB여부'].astype(str).str.contains('해지 취소')]) if 'OB여부' in df_c_7.columns else 0
+        if not df_c_month_raw.empty:
+            total_cancel_raw = len(df_c_month_raw)
+            completed_cnt = len(df_c_7) # 오직 순수 완료건
+            
+            # 해지 취소 건수
+            cancelled_cnt = 0
+            if 'OB여부' in df_c_month_raw.columns:
+                cancelled_cnt = len(df_c_month_raw[df_c_month_raw['OB여부'].astype(str).str.contains('해지 취소', na=False)])
             
             prod_counts = df_c_7['가맹'].value_counts().to_dict() if '가맹' in df_c_7.columns else {}
             prod_str = " / ".join([f"{k}: {v}건" for k, v in prod_counts.items()])
             
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("📌 유효 해지 접수 건수", f"{total_cancel} 건")
-            c2.metric("✅ 해지 처리 완료", f"{completed_cnt} 건")
+            c1.metric("📌 전체 해지 접수 건수", f"{total_cancel_raw} 건")
+            c2.metric("✅ 순수 해지 완료 (차트반영)", f"{completed_cnt} 건")
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt} 건")
-            c4.metric("🏷️ 가맹 상품별 구성", prod_str if prod_str else "-")
+            c4.metric("🏷️ 해지완료 가맹 상품 구성", prod_str if prod_str else "-")
             
             st.markdown("---")
             
@@ -327,10 +335,8 @@ if cs_sheets_dict:
                 f"📊 {selected_month_sheet} 해지 종합 차트"
             ])
             
-            df_c_7_completed = df_c_7.copy()
-            
             with c_subtab1:
-                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (완료/해지취소 총 {len(df_c_7_completed)}건 기준)")
+                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (실해지 완료 총 {len(df_c_7)}건 기준)")
                 weeks = ['1주차', '2주차', '3주차', '4주차']
                 c_col_l, c_col_r = st.columns(2)
                 
@@ -338,7 +344,7 @@ if cs_sheets_dict:
                     target_col = c_col_l if idx % 2 == 0 else c_col_r
                     with target_col:
                         st.markdown(f"### 📌 해지 OB {week_name}")
-                        df_cw = df_c_7_completed[df_c_7_completed['주차'] == week_name]
+                        df_cw = df_c_7[df_c_7['주차'] == week_name] if '주차' in df_c_7.columns else pd.DataFrame()
                         if not df_cw.empty and '해지사유' in df_cw.columns:
                             r_summary = df_cw['해지사유'].value_counts().reset_index()
                             r_summary.columns = ['해지사유', '건수']
@@ -346,42 +352,42 @@ if cs_sheets_dict:
                             
                             fig_cw_reason = px.bar(
                                 r_summary, x='해지사유', y='건수', text='건수', color='해지사유',
-                                title=f"<b>해지 OB {week_name} 완료/취소건 해지사유별 건수 (총 {len(df_cw)}건)</b>",
+                                title=f"<b>해지 OB {week_name} 완료건 해지사유별 건수 (총 {len(df_cw)}건)</b>",
                                 color_discrete_sequence=px.colors.qualitative.Pastel
                             )
                             fig_cw_reason.update_layout(showlegend=False, height=450, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                             fig_cw_reason = apply_chart_style(fig_cw_reason, x_series=r_summary['해지사유'], max_val=max_rc, force_bar_width=True)
                             st.plotly_chart(fig_cw_reason, use_container_width=True)
                         else:
-                            st.info(f"{week_name} 완료/취소된 해지 데이터가 없습니다.")
+                            st.info(f"{week_name} 해지 완료 데이터가 없습니다.")
 
             with c_subtab2:
-                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (완료/해지취소 기준)")
+                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (실해지 완료 기준)")
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
-                    if '해지사유' in df_c_7_completed.columns:
-                        reason_df = df_c_7_completed['해지사유'].value_counts().reset_index()
+                    if '해지사유' in df_c_7.columns:
+                        reason_df = df_c_7['해지사유'].value_counts().reset_index()
                         reason_df.columns = ['해지사유', '건수']
                         max_r_cnt = reason_df['건수'].max() if not reason_df.empty else 10
                         
-                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>{selected_month_sheet} 완료/취소건 해지사유별 건수 (총 {len(df_c_7_completed)}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>{selected_month_sheet} 완료건 해지사유별 건수 (총 {len(df_c_7)}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
                         fig_reason.update_layout(showlegend=False, height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                         fig_reason = apply_chart_style(fig_reason, x_series=reason_df['해지사유'], max_val=max_r_cnt, force_bar_width=True)
                         st.plotly_chart(fig_reason, use_container_width=True)
                 
                 with ch_col2:
-                    if '지역' in df_c_7_completed.columns and '해지사유' in df_c_7_completed.columns:
-                        reg_reason_pivot = pd.crosstab(df_c_7_completed['지역'], df_c_7_completed['해지사유']).reset_index().melt(id_vars='지역', var_name='해지사유', value_name='건수')
+                    if '지역' in df_c_7.columns and '해지사유' in df_c_7.columns:
+                        reg_reason_pivot = pd.crosstab(df_c_7['지역'], df_c_7['해지사유']).reset_index().melt(id_vars='지역', var_name='해지사유', value_name='건수')
                         reg_reason_df = reg_reason_pivot[reg_reason_pivot['건수'] > 0]
                         max_rr_cnt = reg_reason_df['건수'].max() if not reg_reason_df.empty else 10
                         
-                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title=f"<b>{selected_month_sheet} 완료/취소건 지역별 & 해지사유별 건수 비교</b>", color_discrete_sequence=px.colors.qualitative.Set2)
+                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title=f"<b>{selected_month_sheet} 완료건 지역별 & 해지사유별 건수 비교</b>", color_discrete_sequence=px.colors.qualitative.Set2)
                         fig_reg_reason.update_layout(height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>", legend_title="<b>지역</b>")
                         fig_reg_reason = apply_chart_style(fig_reg_reason, x_series=reg_reason_df['해지사유'], max_val=max_rr_cnt, is_group=True)
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
 
         else:
-            st.warning(f"해지OB 시트에서 {selected_month_sheet} 유효한 해지 데이터를 찾을 수 없습니다.")
+            st.warning(f"해지OB 시트에서 {selected_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
     # TAB 4: AI 인사이트 리포트
     with tab4:
@@ -396,11 +402,10 @@ if cs_sheets_dict:
             top_val = monthly_summary.iloc[0]['건수']
             top_pct = monthly_summary.iloc[0]['비중(%)']
             
-            st.markdown(f"""
-            ### 📌 {selected_month_sheet} CS 종합 핵심 요약
-            1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.
-            2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.
-            3. **해지 OB 현황**: **{selected_month_sheet} 총 유효 해지 접수 {len(df_c_7)}건** 중 **{completed_cnt}건 최종 완료**, **{cancelled_cnt}건 해지 취소(가맹유지 방어)**를 달성했습니다.
-            """)
+            summary_msg = f"### 📌 {selected_month_sheet} CS 종합 핵심 요약\n"
+            summary_msg += f"1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.\n"
+            summary_msg += f"2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.\n"
+            summary_msg += f"3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0}건** 중 **{len(df_c_7)}건 최종 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0}건 해지 취소(가맹유지 방어)**를 달성했습니다."
+            st.markdown(summary_msg)
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
