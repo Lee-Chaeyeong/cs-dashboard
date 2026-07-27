@@ -9,7 +9,7 @@ import datetime
 # 페이지 기본 설정
 st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
 
-# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기 확실하게 강제 확대/볼드/파란색, 메트릭 라벨 강제 적용)
+# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기/볼드체/찐파랑(#003399), 메트릭 라벨 찐파랑 적용)
 st.markdown("""
     <style>
     /* 메인 화면 상단 여백 줄이기 */
@@ -18,7 +18,7 @@ st.markdown("""
         padding-bottom: 1rem !important;
     }
 
-    /* 1. 탭(Tab) 메뉴 버튼 글자 확실하게 강제 확대 (22px) + 볼드체 + 파란색 */
+    /* 1. 탭(Tab) 메뉴 버튼 글자 확대 (22px) + 볼드체 + 찐파랑(#003399) */
     div[data-testid="stTabs"] button,
     button[data-baseweb="tab"],
     div[data-baseweb="tab-list"] button {
@@ -30,24 +30,24 @@ st.markdown("""
     div[data-baseweb="tab-list"] button * {
         font-size: 22px !important;
         font-weight: 800 !important;
-        color: #1E88E5 !important;
+        color: #003399 !important;
     }
 
-    /* 선택된 활성 탭 강조 (더 진한 파란색) */
+    /* 선택된 활성 탭 강조 (더 짙은 찐파랑 #001A66) */
     div[data-testid="stTabs"] button[aria-selected="true"] *,
     button[data-baseweb="tab"][aria-selected="true"] * {
-        color: #0D47A1 !important;
+        color: #001A66 !important;
         font-weight: 900 !important;
     }
 
-    /* 2. 메트릭(st.metric) 라벨 글자 강제 확대 (20px) + 볼드체 + 파란색 */
+    /* 2. 메트릭(st.metric) 라벨 글자 확대 (20px) + 볼드체 + 찐파랑(#003399) */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
     [data-testid="stMetric"] label,
     [data-testid="stMetric"] label * {
         font-size: 20px !important;
         font-weight: 800 !important;
-        color: #1E88E5 !important;
+        color: #003399 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -89,6 +89,7 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
                 bar_width = min(0.6, 0.15 * n_cats)
                 fig.update_traces(width=bar_width)
             
+        # X축 항목명(ticktext)과 X축 제목(title) 모두 볼드체(<b>)로 설정
         fig.update_xaxes(
             tickmode='array',
             tickvals=unique_x,
@@ -109,9 +110,15 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
     
     layout_args = dict(
         title_font=dict(size=title_size),
-        legend=dict(font=dict(size=x_size)),
         margin=dict(t=70, b=70, l=50, r=50)
     )
+    
+    # 단일 차트일 때는 우측 범례(Legend) 완전히 제거
+    if not is_group:
+        layout_args['showlegend'] = False
+    else:
+        layout_args['legend'] = dict(font=dict(size=x_size))
+
     if max_val is not None:
         layout_args['yaxis'] = dict(range=[0, max_val * 1.38], tickfont=dict(size=y_size), title_font=dict(size=y_size))
     
@@ -330,7 +337,7 @@ if cs_sheets_dict:
                         title=f"<b>{week_name} 분류별 CS 건수 (총 {len(df_week):,}건)</b>",
                         color_discrete_sequence=px.colors.qualitative.Pastel
                     )
-                    fig.update_layout(showlegend=False, height=480, xaxis_title="<b>분류</b>", yaxis_title="<b>건수 (건)</b>")
+                    fig.update_layout(height=480, xaxis_title="<b>분류</b>", yaxis_title="<b>건수 (건)</b>")
                     fig = apply_chart_style(fig, x_series=week_summary['분류'], max_val=max_cnt, force_bar_width=True)
                     st.plotly_chart(fig, use_container_width=True)
                 else:
@@ -358,7 +365,7 @@ if cs_sheets_dict:
             with col2:
                 max_m_cnt = monthly_summary['건수'].max() if not monthly_summary.empty else 10
                 fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', color='대분류', title=f"<b>{display_month_sheet} 문의별 인입 건수</b>", color_discrete_sequence=px.colors.qualitative.Bold)
-                fig_m_bar.update_layout(showlegend=False, height=500, xaxis_title="<b>대분류</b>", yaxis_title="<b>건수 (건)</b>")
+                fig_m_bar.update_layout(height=500, xaxis_title="<b>대분류</b>", yaxis_title="<b>건수 (건)</b>")
                 fig_m_bar = apply_chart_style(fig_m_bar, x_series=monthly_summary['대분류'], max_val=max_m_cnt, force_bar_width=True)
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
@@ -379,6 +386,7 @@ if cs_sheets_dict:
                     res_reg_df = df_res_7['운행 지역'].value_counts().reset_index()
                     res_reg_df.columns = ['운행 지역', '예약건수']
                     fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b>{display_month_sheet} CS예약 건수 (지역별)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_res_reg.update_layout(height=480, xaxis_title="<b>운행 지역</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_reg = apply_chart_style(fig_res_reg, x_series=res_reg_df['운행 지역'], max_val=res_reg_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_reg, use_container_width=True)
             with r_col2:
@@ -386,6 +394,7 @@ if cs_sheets_dict:
                     res_inq_df = df_res_7['문의 사항'].value_counts().reset_index()
                     res_inq_df.columns = ['문의 사항', '예약건수']
                     fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b>{display_month_sheet} CS예약 건수 (문의별)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_res_inq.update_layout(height=480, xaxis_title="<b>문의 사항</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
@@ -444,7 +453,7 @@ if cs_sheets_dict:
                                 title=f"<b>해지 OB {week_name} 완료건 해지사유별 건수 (총 {len(df_cw):,}건)</b>",
                                 color_discrete_sequence=px.colors.qualitative.Pastel
                             )
-                            fig_cw_reason.update_layout(showlegend=False, height=450, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
+                            fig_cw_reason.update_layout(height=450, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                             fig_cw_reason = apply_chart_style(fig_cw_reason, x_series=r_summary['해지사유'], max_val=max_rc, force_bar_width=True)
                             st.plotly_chart(fig_cw_reason, use_container_width=True)
                         else:
@@ -460,7 +469,7 @@ if cs_sheets_dict:
                         max_r_cnt = reason_df['건수'].max() if not reason_df.empty else 10
                         
                         fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>{selected_month_sheet} 완료건 해지사유별 건수 (총 {len(df_c_7):,}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
-                        fig_reason.update_layout(showlegend=False, height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
+                        fig_reason.update_layout(height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                         fig_reason = apply_chart_style(fig_reason, x_series=reason_df['해지사유'], max_val=max_r_cnt, force_bar_width=True)
                         st.plotly_chart(fig_reason, use_container_width=True)
                 
