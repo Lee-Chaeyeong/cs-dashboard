@@ -33,14 +33,24 @@ st.set_page_config(
     layout="wide"
 )
 
-# 3. 고도화된 CSS 디자인 시스템 적용 (Pretendard 폰트 + 카드 레이아웃 + 그림자 & 테두리 + 원형 스피너)
+# 3. 고도화된 CSS 디자인 시스템 적용 (아이콘 폰트 깨짐 방지 처리 포함)
 st.markdown("""
     <style>
-    /* Pretendard 폰트 불러오기 및 전체 적용 */
+    /* Pretendard 폰트 불러오기 및 기본 적용 */
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
-    html, body, [class*="css"], [class*="st-"] {
-        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
+    html, body, .stApp {
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    /* 📌 스트림릿 내장 아이콘 폰트 복구 (접기 버튼 << 및 업로드 아이콘 텍스트 깨짐 완벽 방지) */
+    [data-testid="stIconMaterial"], 
+    [data-testid="stSidebarCollapseButton"] *,
+    [data-testid="stBaseButton-headerNoPadding"] *,
+    [data-testid="stFileUploaderDropzone"] i,
+    .material-symbols-outlined,
+    .material-symbols-rounded {
+        font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'StreamlitIcons' !important;
     }
 
     /* 화면 상하 여백 정돈 */
@@ -418,7 +428,6 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
-    # 문맥에 맞춘 일관성 있는 탭 아이콘 정돈
     tab1, tab2, tab3, tab4 = st.tabs([
         "📊 주차별 CS 인입 현황", 
         f"📈 {display_month_sheet} CS 인입 비중 & 예약 현황",
@@ -426,7 +435,6 @@ if cs_sheets_dict:
         "💡 AI 인사이트 리포트"
     ])
     
-    # 🎨 차트 맞춤형 세련된 파란색 계열 컬러 팔레트
     blue_palette = ['#003399', '#2563EB', '#0284C7', '#0891B2', '#0D9488', '#059669', '#475569']
 
     with tab1:
