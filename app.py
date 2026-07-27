@@ -9,6 +9,22 @@ import datetime
 # 페이지 기본 설정
 st.set_page_config(page_title="BTX CS 종합 자동 분석 대시보드", layout="wide")
 
+# CSS 스타일 추가 (상단 여백 줄이기 및 탭 글자 크기 확대)
+st.markdown("""
+    <style>
+    /* 메인 화면 상단 여백 줄이기 */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+    /* 탭(Tab) 메뉴 글씨 크기 확대 및 굵게 설정 */
+    button[data-baseweb="tab"] p {
+        font-size: 19px !important;
+        font-weight: bold !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📊 BTX CS 종합 자동 분석 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
@@ -182,8 +198,35 @@ if cs_sheets_dict:
     else:
         target_year, target_month = 2026, 7
 
-    # 1. 선택된 월 CS 인입
+    # 1. 선택된 월 CS 인입 데이터 로드
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
+
+    # 월별 시트의 '주차' 규칙 학습
+    dynamic_week_ranges = []
+    
+    if not df.empty:
+        week_col_main = '주차' if '주차' in df.columns else None
+        date_col_main = None
+        for c in df.columns:
+            c_str = str(c).replace(' ', '')
+            if any(kw in c_str for kw in ['상담일자', '일자', '날짜', '접수일', '시간']):
+                date_col_main = c
+                break
+                
+        if week_col_main and date_col_main:
+            temp_df = df.copy()
+            temp_df['__dt__'] = pd.to_datetime(temp_df[date_col_main], errors='coerce')
+            temp_df = temp_df.dropna(subset=['__dt__', week_col_main])
+            
+            for w_name, grp in temp_df.groupby(week_col_main):
+                w_str = str(w_name).strip()
+                if '주' in w_str:
+                    dynamic_week_ranges.append({
+                        'min_d': grp['__dt__'].min().date(),
+                        'max_d': grp['__dt__'].max().date(),
+                        'week_name': w_str
+                    })
+            dynamic_week_ranges.sort(key=lambda x: x['min_d'])
 
     # 2. 선택된 월 CS예약 필터링
     df_res_7 = pd.DataFrame()
@@ -194,32 +237,36 @@ if cs_sheets_dict:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
     # 3. 선택된 월 해지OB 필터링
-    df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
-    df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
+    df_c_month_raw = pd.DataFrame() 
+    df_c_7 = pd.DataFrame()        
     
     if not df_c_all.empty and 'OB일자_dt' in df_c_all.columns:
         df_c_month_raw = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
         
-        def assign_week_robust(row):
-            for col_k in row.index:
-                col_s = str(col_k).strip()
-                if col_s in ['주차', '주'] and pd.notna(row[col_k]) and str(row[col_k]).strip() != '':
-                    v_str = str(row[col_k]).strip()
-                    if '1' in v_str: return '1주차'
-                    elif '2' in v_str: return '2주차'
-                    elif '3' in v_str: return '3주차'
-                    elif '4' in v_str or '5' in v_str: return '4주차'
-                    return v_str
+        def assign_dynamic_week(row):
+            dt = row['OB일자_dt']
+            if pd.isna(dt): return '1주차'
+            d_val = dt.date()
             
-            dt = row['OB일자_dt'] if 'OB일자_dt' in row.index and pd.notna(row['OB일자_dt']) else None
-            if dt is None or pd.isna(dt): return '1주차'
-            d = dt.day
-            if d <= 5: return '1주차'
-            elif d <= 12: return '2주차'
-            elif d <= 19: return '3주차'
-            else: return '4주차'
+            if dynamic_week_ranges:
+                for w_info in dynamic_week_ranges:
+                    if w_info['min_d'] <= d_val <= w_info['max_d']:
+                        return w_info['week_name']
+                
+                if d_val < dynamic_week_ranges[0]['min_d']:
+                    return dynamic_week_ranges[0]['week_name']
+                if d_val > dynamic_week_ranges[-1]['max_d']:
+                    return dynamic_week_ranges[-1]['week_name']
+                for i in range(len(dynamic_week_ranges) - 1):
+                    if dynamic_week_ranges[i]['max_d'] < d_val < dynamic_week_ranges[i+1]['min_d']:
+                        return dynamic_week_ranges[i]['week_name']
+            
+            day_val = d_val.day
+            w_num = (day_val - 1) // 7 + 1
+            if w_num > 4: w_num = 4
+            return f"{w_num}주차"
 
-        df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week_robust, axis=1)
+        df_c_month_raw['주차'] = df_c_month_raw.apply(assign_dynamic_week, axis=1)
             
         if 'OB여부' in df_c_month_raw.columns:
             ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
@@ -278,20 +325,14 @@ if cs_sheets_dict:
             monthly_summary.columns = ['대분류', '건수']
             total_calls = monthly_summary['건수'].sum()
             monthly_summary['비중(%)'] = (monthly_summary['건수'] / total_calls * 100).round(1)
-            
-            # ★ 범례 이름 굵게(Bold) 표시를 위해 HTML 태그 적용
             monthly_summary['대분류_범례'] = '<b>' + monthly_summary['대분류'].astype(str) + '</b>'
             
             col1, col2 = st.columns(2)
             with col1:
-                # 도넛 차트 생성 (names 기준을 볼드체로 변경)
                 fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b>{selected_month_sheet} 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
-                
-                # 도넛 안쪽 글씨 크기도 16 -> 18로 확대
                 fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
                 fig_pie.update_layout(
                     title_font=dict(size=22),
-                    # ★ 도넛 차트 옆 범례(Legend) 폰트 크기 대폭 확대 (18 -> 22)
                     legend=dict(font=dict(size=22)),
                     margin=dict(t=80, b=50, l=40, r=40)
                 )
@@ -311,7 +352,6 @@ if cs_sheets_dict:
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
             m2.metric("📌 최다 예약 운행 지역", f"{top_res_region}")
             
-            # O열 (OB) 데이터가 있으면 빈칸을 제외하고 건수 계산
             ob_cnt = len(df[df['OB'].notna() & (df['OB'].astype(str).str.strip() != '')]) if 'OB' in df.columns else 0
             m3.metric(f"📞 {selected_month_sheet} OB 건수", f"{ob_cnt} 건")
             
