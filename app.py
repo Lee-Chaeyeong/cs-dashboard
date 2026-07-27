@@ -178,9 +178,10 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 완료 및 해지 취소만 반영하도록 수정됨 ★)
+    # 3. 선택된 월 해지OB 필터링 (★ 완료 및 해지 취소만 반영 / 주차 덮어쓰기 금지 적용 ★)
     df_c_7 = pd.DataFrame()
     if not df_c_all.empty:
+        # 무조건 D열(OB일자)을 기준으로 월을 판별하여 데이터를 가져옵니다.
         if 'OB일자_dt' in df_c_all.columns:
             df_c_7 = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
             
@@ -188,16 +189,17 @@ if cs_sheets_dict:
             if 'OB여부' in df_c_7.columns:
                 df_c_7 = df_c_7[df_c_7['OB여부'].astype(str).str.contains('완료|해지 취소', na=False)].copy()
             
-            def assign_week(row):
-                dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
-                if dt is None: return '1주차'
-                d = dt.day
-                if d <= 5: return '1주차'
-                elif d <= 12: return '2주차'
-                elif d <= 19: return '3주차'
-                else: return '4주차'
-
-            df_c_7['주차'] = df_c_7.apply(assign_week, axis=1)
+            # ★ 핵심 수정: 구글 시트에 이미 '주차' 열이 있다면 절대 덮어쓰지 않고 시트 데이터를 존중합니다!
+            if '주차' not in df_c_7.columns:
+                def assign_week(row):
+                    dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
+                    if dt is None: return '1주차'
+                    d = dt.day
+                    if d <= 7: return '1주차'
+                    elif d <= 14: return '2주차'
+                    elif d <= 21: return '3주차'
+                    else: return '4주차'
+                df_c_7['주차'] = df_c_7.apply(assign_week, axis=1)
 
     st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df)}건) / CS예약({len(df_res_7)}건) / 유효 해지OB({len(df_c_7)}건) 데이터 분석 완료!")
     
@@ -325,7 +327,6 @@ if cs_sheets_dict:
                 f"📊 {selected_month_sheet} 해지 종합 차트"
             ])
             
-            # 이제 df_c_7 자체가 완료/취소만 남아있으므로 그대로 사용합니다.
             df_c_7_completed = df_c_7.copy()
             
             with c_subtab1:
