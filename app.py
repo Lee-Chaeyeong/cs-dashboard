@@ -218,7 +218,8 @@ if cs_sheets_dict:
         
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
-    display_month_sheet = selected_month_sheet.replace("년", "년 ")
+    # 표시용 월 문자열 (예: '26년7월' -> '26년 7월')
+    display_month_sheet = re.sub(r'년\s*', '년 ', selected_month_sheet).strip()
     
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
     if m_match:
@@ -299,7 +300,7 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
+    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -310,7 +311,7 @@ if cs_sheets_dict:
     tab1, tab2, tab3, tab4 = st.tabs([
         "📅 주차별 개별 차트 (1주차~4주차)", 
         f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황",
-        f"🚨 {selected_month_sheet} 해지OB 세부 분석",
+        f"🚨 {display_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
@@ -352,7 +353,7 @@ if cs_sheets_dict:
             
             col1, col2 = st.columns(2)
             with col1:
-                fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                fig_pie = px.pie(monthly_summary, names='대분례_범례' if '대분례_범례' in monthly_summary.columns else '대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
                 fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
                 fig_pie.update_layout(
                     title_font=dict(size=22),
@@ -396,10 +397,10 @@ if cs_sheets_dict:
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
-            st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
+            st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
     with tab3:
-        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
+        st.subheader(f"🚨 {display_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
         if not df_c_month_raw.empty:
             total_cancel_raw = len(df_c_month_raw)
@@ -428,7 +429,7 @@ if cs_sheets_dict:
             
             c_subtab1, c_subtab2 = st.tabs([
                 "📋 주차별 해지 사유",
-                f"📊 {selected_month_sheet} 해지 종합 차트"
+                f"📊 {display_month_sheet} 해지 종합 차트"
             ])
             
             with c_subtab1:
@@ -458,7 +459,7 @@ if cs_sheets_dict:
                             st.info(f"{week_name} 해지 완료 데이터가 없습니다.")
 
             with c_subtab2:
-                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (실 해지 완료 기준)")
+                st.subheader(f"📊 {display_month_sheet} 해지사유 & 지역별 종합 차트 (실 해지 완료 기준)")
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
                     if '해지사유' in df_c_7.columns:
@@ -484,10 +485,10 @@ if cs_sheets_dict:
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
 
         else:
-            st.warning(f"해지OB 시트에서 {selected_month_sheet} 해지 데이터를 찾을 수 없습니다.")
+            st.warning(f"해지OB 시트에서 {display_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
     with tab4:
-        st.subheader(f"🤖 {selected_month_sheet} AI 자동 생성 종합 분석 보고서")
+        st.subheader(f"🤖 {display_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
             monthly_summary = df[cat_col].value_counts().reset_index()
             monthly_summary.columns = ['대분류', '건수']
@@ -498,9 +499,9 @@ if cs_sheets_dict:
             top_val = monthly_summary.iloc[0]['건수']
             top_pct = monthly_summary.iloc[0]['비중(%)']
             
-            st.markdown(f"""### 📌 {selected_month_sheet} CS 종합 핵심 요약
+            st.markdown(f"""### 📌 {display_month_sheet} CS 종합 핵심 요약
 1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val:,}건 / 총 {total_calls:,}건)**으로 전체 1위를 기록했습니다.
-2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7):,}건**의 상담 예약이 인입되었습니다.
-3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0:,}건** 중 **{len(df_c_7):,}건 최종 실 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0:,}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
+2. **상담 예약 현황**: **{display_month_sheet} 총 {len(df_res_7):,}건**의 상담 예약이 인입되었습니다.
+3. **해지 OB 현황**: **{display_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0:,}건** 중 **{len(df_c_7):,}건 최종 실 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0:,}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
