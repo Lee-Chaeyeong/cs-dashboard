@@ -5,22 +5,9 @@ import requests
 import io
 import re
 import datetime
-from PIL import Image
 
-# 📌 깃허브에 올라간 블루 로고 이미지 불러오기
-try:
-    logo = Image.open("20251218 PNG 축약형 로고_블루.png")
-except Exception:
-    logo = "📊"
-
-# 페이지 기본 설정 (블루 로고 파비콘 적용)
-st.set_page_config(
-    page_title="BTX CS 월 별 대시보드",
-    page_icon=logo,
-    layout="wide"
-)
-
-# --- ⚠️ 이 아래에 있는 기존 대시보드 코드는 절대로 건드리지 마시고 그대로 두세요! ---
+# 페이지 기본 설정
+st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
 
 # CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기/볼드체/찐파랑(#003399), 메트릭 라벨 찐파랑 적용)
 st.markdown("""
@@ -72,7 +59,7 @@ st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
-    value="여기에_본인의_구글시트_주소를_넣으세요",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help="구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야 합니다."
 )
