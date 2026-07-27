@@ -107,7 +107,7 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
     # 월별 CS 인입 시트 감지
     cs_sheets = [s for s in sheets if '년' in s and '월' in s]
     
-    # ★ 핵심 수정: 시트 이름을 인식하여 최신 달이 맨 위로 오도록 내림차순 정렬
+    # 최신 달이 맨 위로 오도록 내림차순 정렬
     def sort_key(s):
         m = re.search(r'(\d+)년\s*(\d+)월', s)
         if m:
@@ -166,7 +166,6 @@ if cs_sheets_dict:
     
     select_options = available_cs_sheets.copy()
     
-    # ★ 핵심 수정: 현재 날짜를 확인하여 이번 달 시트를 기본값으로 세팅
     now = datetime.datetime.now()
     current_month_str = f"{now.year % 100}년{now.month}월"
     default_index = 0
@@ -194,7 +193,7 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (오직 정확히 '완료' 2글자만 엄격 반영)
+    # 3. 선택된 월 해지OB 필터링 (★ 구글 시트 주차 강제 인식 및 임의 계산 차단 ★)
     df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
     df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
     
@@ -202,19 +201,21 @@ if cs_sheets_dict:
         # D열(OB일자) 기준으로 해당 월 데이터 전체 추출
         df_c_month_raw = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
         
-        # '주차' 열 보존 또는 자동 생성
-        if '주차' not in df_c_month_raw.columns:
-            def assign_week(row):
-                dt = row['OB일자_dt'] if 'OB일자_dt' in row and pd.notna(row['OB일자_dt']) else None
-                if dt is None: return '1주차'
-                d = dt.day
-                if d <= 7: return '1주차'
-                elif d <= 14: return '2주차'
-                elif d <= 21: return '3주차'
-                else: return '4주차'
-            df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week, axis=1)
+        # ★ 완벽하게 '주차' 열을 찾아 구글 시트 값을 100% 그대로 반영합니다.
+        week_col_found = False
+        for col in df_c_month_raw.columns:
+            col_name = str(col).strip()
+            # 열 이름에 '주' 또는 '주차'가 포함되어 있으면 구글 시트 값을 무조건 사용
+            if '주' in col_name or '주차' in col_name:
+                df_c_month_raw['주차'] = df_c_month_raw[col]
+                week_col_found = True
+                break
+                
+        # 만약 구글 시트에 주차 열이 정말로 하나도 없을 때만 기본값 생성 (안전장치)
+        if not week_col_found:
+             df_c_month_raw['주차'] = '1주차'
             
-        # 오직 '완료' 2글자와 일치하는 건만 추출
+        # 오직 '완료' 2글자와 일치하는 건만 추출 (공백 제거 후)
         if 'OB여부' in df_c_month_raw.columns:
             ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
             df_c_7 = df_c_month_raw[ob_status == '완료'].copy()
