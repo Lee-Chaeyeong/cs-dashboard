@@ -9,7 +9,7 @@ import datetime
 # 페이지 기본 설정
 st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
 
-# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기 확대/볼드/파란색, 메트릭 라벨 스타일 적용)
+# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기 확실하게 강제 확대/볼드/파란색, 메트릭 라벨 강제 적용)
 st.markdown("""
     <style>
     /* 메인 화면 상단 여백 줄이기 */
@@ -17,25 +17,36 @@ st.markdown("""
         padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
     }
-    /* 탭(Tab) 버튼 글씨 크기 확대(20px), 볼드체, 파란색 설정 */
-    button[data-baseweb="tab"] p {
-        font-size: 20px !important;
-        font-weight: bold !important;
+
+    /* 1. 탭(Tab) 메뉴 버튼 글자 확실하게 강제 확대 (22px) + 볼드체 + 파란색 */
+    div[data-testid="stTabs"] button,
+    button[data-baseweb="tab"],
+    div[data-baseweb="tab-list"] button {
+        padding: 8px 16px !important;
+    }
+
+    div[data-testid="stTabs"] button *,
+    button[data-baseweb="tab"] *,
+    div[data-baseweb="tab-list"] button * {
+        font-size: 22px !important;
+        font-weight: 800 !important;
         color: #1E88E5 !important;
     }
-    /* 선택된 탭 강조 파란색 */
-    button[data-baseweb="tab"][aria-selected="true"] p {
+
+    /* 선택된 활성 탭 강조 (더 진한 파란색) */
+    div[data-testid="stTabs"] button[aria-selected="true"] *,
+    button[data-baseweb="tab"][aria-selected="true"] * {
         color: #0D47A1 !important;
+        font-weight: 900 !important;
     }
-    /* 메트릭(Metric) 상단 라벨 글씨 크기 확대, 볼드체, 파란색 설정 */
-    div[data-testid="stMetricLabel"] {
-        font-size: 18px !important;
-        font-weight: bold !important;
-        color: #1E88E5 !important;
-    }
-    div[data-testid="stMetricLabel"] * {
-        font-size: 18px !important;
-        font-weight: bold !important;
+
+    /* 2. 메트릭(st.metric) 라벨 글자 강제 확대 (20px) + 볼드체 + 파란색 */
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] *,
+    [data-testid="stMetric"] label,
+    [data-testid="stMetric"] label * {
+        font-size: 20px !important;
+        font-weight: 800 !important;
         color: #1E88E5 !important;
     }
     </style>
@@ -60,7 +71,6 @@ if st.sidebar.button("🔄 최신 데이터 새로고침"):
     st.rerun()
 
 def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19, y_size=17, title_size=22, is_group=False, force_bar_width=False):
-    # 차트 막대 위 텍스트에 천 단위 콤마 추가
     fig.update_traces(
         texttemplate='<b>%{y:,.0f}건</b>',
         textposition='outside',
@@ -137,10 +147,8 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
     xls_dict = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=None, header=None)
     sheets = list(xls_dict.keys())
     
-    # 월별 CS 인입 시트 감지
     cs_sheets = [s for s in sheets if '년' in s and '월' in s]
     
-    # 최신 달이 맨 위로 오도록 내림차순 정렬
     def sort_key(s):
         m = re.search(r'(\d+)년\s*(\d+)월', s)
         if m:
@@ -162,7 +170,6 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         df_sheet = clean_data_text(df_sheet)
         cs_sheets_dict[s] = df_sheet
 
-    # CS예약(NEW)
     df_res_all = pd.DataFrame()
     if 'CS예약(NEW)' in sheets:
         df_res_all = pd.read_excel(io.BytesIO(excel_bytes), sheet_name='CS예약(NEW)')
@@ -170,7 +177,6 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         if '예약시간' in df_res_all.columns:
             df_res_all['예약시간_dt'] = pd.to_datetime(df_res_all['예약시간'], errors='coerce')
 
-    # 해지OB
     df_c_all = pd.DataFrame()
     for s_name in sheets:
         if ('해지' in s_name or '해제' in s_name) and 'OB' in s_name:
@@ -207,10 +213,8 @@ if cs_sheets_dict:
         
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
-    # 띄어쓰기가 들어간 표시용 월 문자열 (예: 26년 7월)
     display_month_sheet = selected_month_sheet.replace("년", "년 ")
     
-    # 선택된 월 파싱
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
     if m_match:
         target_year = 2000 + int(m_match.group(1))
@@ -218,10 +222,8 @@ if cs_sheets_dict:
     else:
         target_year, target_month = 2026, 7
 
-    # 1. 선택된 월 CS 인입 데이터 로드
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
 
-    # 월별 시트의 '주차' 규칙 학습
     dynamic_week_ranges = []
     
     if not df.empty:
@@ -248,7 +250,6 @@ if cs_sheets_dict:
                     })
             dynamic_week_ranges.sort(key=lambda x: x['min_d'])
 
-    # 2. 선택된 월 CS예약 필터링
     df_res_7 = pd.DataFrame()
     if not df_res_all.empty:
         if 'CS비고' in df_res_all.columns and selected_month_sheet in df_res_all['CS비고'].values:
@@ -256,7 +257,6 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링
     df_c_month_raw = pd.DataFrame() 
     df_c_7 = pd.DataFrame()        
     
@@ -294,7 +294,6 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    # 상단 요약 메트릭
     st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
@@ -310,7 +309,6 @@ if cs_sheets_dict:
         "🤖 AI 인사이트 리포트"
     ])
     
-    # TAB 1: 주차별 CS 인입 차트
     with tab1:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
@@ -338,7 +336,6 @@ if cs_sheets_dict:
                 else:
                     st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
-    # TAB 2: 월마감 & CS예약 현황
     with tab2:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
@@ -369,7 +366,6 @@ if cs_sheets_dict:
         st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
-            # 요청하신 변경 명칭 적용 (CSS를 통해 폰트 UP, 볼드, 파란색 자동 적용)
             m1.metric(f"📌 {display_month_sheet} CS 상담 예약 건수", f"{len(df_res_7):,} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
             m2.metric("📌 최다 CS예약 접수 지역", f"{top_res_region}")
@@ -383,7 +379,6 @@ if cs_sheets_dict:
                     res_reg_df = df_res_7['운행 지역'].value_counts().reset_index()
                     res_reg_df.columns = ['운행 지역', '예약건수']
                     fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b>{display_month_sheet} CS예약 건수 (지역별)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
-                    fig_res_reg.update_layout(showlegend=False, height=480, xaxis_title="<b>운행 지역</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_reg = apply_chart_style(fig_res_reg, x_series=res_reg_df['운행 지역'], max_val=res_reg_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_reg, use_container_width=True)
             with r_col2:
@@ -391,13 +386,11 @@ if cs_sheets_dict:
                     res_inq_df = df_res_7['문의 사항'].value_counts().reset_index()
                     res_inq_df.columns = ['문의 사항', '예약건수']
                     fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b>{display_month_sheet} CS예약 건수 (문의별)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
-                    fig_res_inq.update_layout(showlegend=False, height=480, xaxis_title="<b>문의 사항</b>", yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
             st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 3: 해지OB 세부 분석
     with tab3:
         st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
@@ -485,7 +478,6 @@ if cs_sheets_dict:
         else:
             st.warning(f"해지OB 시트에서 {selected_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
-    # TAB 4: AI 인사이트 리포트
     with tab4:
         st.subheader(f"🤖 {selected_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
