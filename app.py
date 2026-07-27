@@ -89,7 +89,6 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
                 bar_width = min(0.6, 0.15 * n_cats)
                 fig.update_traces(width=bar_width)
             
-        # X축 항목명(ticktext)과 X축 제목(title) 모두 볼드체(<b>)로 설정
         fig.update_xaxes(
             tickmode='array',
             tickvals=unique_x,
@@ -113,7 +112,6 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
         margin=dict(t=70, b=70, l=50, r=50)
     )
     
-    # 단일 차트일 때는 우측 범례(Legend) 완전히 제거
     if not is_group:
         layout_args['showlegend'] = False
     else:
@@ -418,8 +416,9 @@ if cs_sheets_dict:
             c2.metric("✅ 실 해지 완료 (차트반영)", f"{completed_cnt:,} 건")
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt:,} 건")
             
+            # [요청 1 반영] '🏷️ 해지완료 가맹 상품'으로 변경 및 동일 폰트(20px), 볼드체, 찐파랑(#003399) 적용
             with c4:
-                st.markdown("""<div style="font-size: 14px; color: rgba(49, 51, 63, 0.6); margin-bottom: 8px;">🏷️ 해지완료 가맹 상품 구성</div>""", unsafe_allow_html=True)
+                st.markdown("""<div style="font-size: 20px; font-weight: 800; color: #003399; margin-bottom: 8px;">🏷️ 해지완료 가맹 상품</div>""", unsafe_allow_html=True)
                 if prod_counts:
                     for k, v in prod_counts.items():
                         st.markdown(f"""<div style="font-size: 1.5rem; font-weight: 600; line-height: 1.4;">• {k}: {v:,}건</div>""", unsafe_allow_html=True)
@@ -468,7 +467,8 @@ if cs_sheets_dict:
                         reason_df.columns = ['해지사유', '건수']
                         max_r_cnt = reason_df['건수'].max() if not reason_df.empty else 10
                         
-                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b>{selected_month_sheet} 완료건 해지사유별 건수 (총 {len(df_c_7):,}건)</b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                        # [요청 2 반영] '26년 7월 해지사유별 건수 (총 26건)' 형태 + 볼드체 + 찐파랑(#003399) 적용
+                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b><span style='color:#003399;'>{display_month_sheet} 해지사유별 건수 (총 {len(df_c_7):,}건)</span></b>", color_discrete_sequence=px.colors.qualitative.Pastel)
                         fig_reason.update_layout(height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>")
                         fig_reason = apply_chart_style(fig_reason, x_series=reason_df['해지사유'], max_val=max_r_cnt, force_bar_width=True)
                         st.plotly_chart(fig_reason, use_container_width=True)
@@ -479,7 +479,8 @@ if cs_sheets_dict:
                         reg_reason_df = reg_reason_pivot[reg_reason_pivot['건수'] > 0]
                         max_rr_cnt = reg_reason_df['건수'].max() if not reg_reason_df.empty else 10
                         
-                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title=f"<b>{selected_month_sheet} 완료건 지역별 & 해지사유별 건수 비교</b>", color_discrete_sequence=px.colors.qualitative.Set2)
+                        # [요청 3 반영] '26년 7월 지역별 & 해지 사유별 비교' + 볼드체 + 찐파랑(#003399) 적용
+                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역', barmode='group', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 & 해지 사유별 비교</span></b>", color_discrete_sequence=px.colors.qualitative.Set2)
                         fig_reg_reason.update_layout(height=500, xaxis_title="<b>해지사유</b>", yaxis_title="<b>건수 (건)</b>", legend_title="<b>지역</b>")
                         fig_reg_reason = apply_chart_style(fig_reg_reason, x_series=reg_reason_df['해지사유'], max_val=max_rr_cnt, is_group=True)
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
