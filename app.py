@@ -326,14 +326,14 @@ if cs_sheets_dict:
             c2.metric("✅ 실 해지 완료 (차트반영)", f"{completed_cnt} 건")
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt} 건")
             
-            # 줄바꿈하여 짤림 없이 다 표시되도록 수정
+            # 줄바꿈과 폰트 크기 조절을 통해 짤림 방지 및 가독성 개선
             with c4:
-                st.caption("🏷️ 해지완료 가맹 상품 구성")
+                st.markdown("""<div style="font-size: 14px; color: rgba(49, 51, 63, 0.6); margin-bottom: 8px;">🏷️ 해지완료 가맹 상품 구성</div>""", unsafe_allow_html=True)
                 if prod_counts:
                     for k, v in prod_counts.items():
-                        st.write(f"• **{k}**: {v}건")
+                        st.markdown(f"""<div style="font-size: 1.5rem; font-weight: 600; line-height: 1.4;">• {k}: {v}건</div>""", unsafe_allow_html=True)
                 else:
-                    st.write("-")
+                    st.markdown("""<div style="font-size: 1.5rem; font-weight: 600;">-</div>""", unsafe_allow_html=True)
             
             st.markdown("---")
             
@@ -412,6 +412,6 @@ if cs_sheets_dict:
             st.markdown(f"""### 📌 {selected_month_sheet} CS 종합 핵심 요약
 1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.
 2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.
-3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0}건** 중 **{len(df_c_7)}건 최종 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
+3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0}건** 중 **{len(df_c_7)}건 최종 실 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
