@@ -7,7 +7,7 @@ import re
 import datetime
 
 # 페이지 기본 설정
-st.set_page_config(page_title="BTX CS 종합 자동 분석 대시보드", layout="wide")
+st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
 
 # CSS 스타일 추가 (상단 여백 줄이기 및 탭 글자 크기 확대)
 st.markdown("""
@@ -25,7 +25,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 BTX CS 종합 자동 분석 대시보드")
+st.title("📊 BTX CS 월 별 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
 # 사이드바 입력 및 파일 업로드
