@@ -4,6 +4,7 @@ import plotly.express as px
 import requests
 import io
 import re
+import datetime
 
 # 페이지 기본 설정
 st.set_page_config(page_title="BTX CS 종합 자동 분석 대시보드", layout="wide")
@@ -103,9 +104,16 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
     xls_dict = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=None, header=None)
     sheets = list(xls_dict.keys())
     
-    # 월별 CS 인입 시트 감지 (예: '26년7월', '26년8월')
+    # 월별 CS 인입 시트 감지
     cs_sheets = [s for s in sheets if '년' in s and '월' in s]
-    cs_sheets.sort()
+    
+    # ★ 핵심 수정: 시트 이름을 인식하여 최신 달이 맨 위로 오도록 내림차순 정렬
+    def sort_key(s):
+        m = re.search(r'(\d+)년\s*(\d+)월', s)
+        if m:
+            return int(m.group(1)) * 100 + int(m.group(2))
+        return 0
+    cs_sheets.sort(key=sort_key, reverse=True)
     
     cs_sheets_dict = {}
     for s in cs_sheets:
@@ -157,7 +165,15 @@ if cs_sheets_dict:
     st.sidebar.header("📅 분석 대상 월 선택")
     
     select_options = available_cs_sheets.copy()
-    selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options)
+    
+    # ★ 핵심 수정: 현재 날짜를 확인하여 이번 달 시트를 기본값으로 세팅
+    now = datetime.datetime.now()
+    current_month_str = f"{now.year % 100}년{now.month}월"
+    default_index = 0
+    if current_month_str in select_options:
+        default_index = select_options.index(current_month_str)
+        
+    selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
     # 선택된 월 파싱
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
@@ -178,7 +194,7 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 오직 정확히 '완료' 2글자만 엄격 반영 ★)
+    # 3. 선택된 월 해지OB 필터링 (오직 정확히 '완료' 2글자만 엄격 반영)
     df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
     df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
     
