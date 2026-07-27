@@ -5,9 +5,34 @@ import requests
 import io
 import re
 import datetime
+import os
+from PIL import Image
 
-# 페이지 기본 설정
-st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
+# 1. 블루 로고 이미지 안전 로딩 (파비콘 및 본문 타이틀용)
+logo_img = None
+logo_filename = "20251218 PNG 축약형 로고_블루.png"
+
+if os.path.exists(logo_filename):
+    try:
+        logo_img = Image.open(logo_filename)
+    except Exception:
+        logo_img = None
+else:
+    # 한글 파일명 인식 오류 방지를 위한 폴더 내 PNG 자동 검색
+    for f in os.listdir('.'):
+        if f.lower().endswith('.png'):
+            try:
+                logo_img = Image.open(f)
+                break
+            except Exception:
+                pass
+
+# 2. 페이지 기본 설정 (브라우저 탭 아이콘에 블루 로고 적용)
+st.set_page_config(
+    page_title="BTX CS 월 별 대시보드",
+    page_icon=logo_img if logo_img else "📊",
+    layout="wide"
+)
 
 # CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기/볼드체/찐파랑(#003399), 메트릭 라벨 찐파랑 적용)
 st.markdown("""
@@ -52,14 +77,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 BTX CS 월 별 대시보드")
+# 3. 본문 제목 (차트 아이콘 대신 BTX 블루 로고 이미지 적용)
+if logo_img:
+    col_logo, col_title = st.columns([0.06, 0.94])
+    with col_logo:
+        st.image(logo_img, width=50)
+    with col_title:
+        st.title("BTX CS 월 별 대시보드")
+else:
+    st.title("📊 BTX CS 월 별 대시보드")
+
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
 # 사이드바 입력 및 파일 업로드
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
-    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs0oTxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help="구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야 합니다."
 )
