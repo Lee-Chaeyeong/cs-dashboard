@@ -8,7 +8,7 @@ import datetime
 import os
 from PIL import Image
 
-# 1. 블루 로고 이미지 안전 로딩 (파비콘 및 본문 타이틀용)
+# 1. 브라우저 탭 파비콘용 블루 로고 로딩
 logo_img = None
 logo_filename = "20251218 PNG 축약형 로고_블루.png"
 
@@ -18,7 +18,6 @@ if os.path.exists(logo_filename):
     except Exception:
         logo_img = None
 else:
-    # 한글 파일명 인식 오류 방지를 위한 폴더 내 PNG 자동 검색
     for f in os.listdir('.'):
         if f.lower().endswith('.png'):
             try:
@@ -27,10 +26,10 @@ else:
             except Exception:
                 pass
 
-# 2. 페이지 기본 설정 (브라우저 탭 아이콘에 블루 로고 적용)
+# 2. 페이지 기본 설정 (브라우저 탭 파비콘만 로고 적용)
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
-    page_icon=logo_img if logo_img else "📊",
+    page_icon=logo_img if logo_img else "🚕",
     layout="wide"
 )
 
@@ -77,16 +76,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 본문 제목 (차트 아이콘 대신 BTX 블루 로고 이미지 적용)
-if logo_img:
-    col_logo, col_title = st.columns([0.06, 0.94])
-    with col_logo:
-        st.image(logo_img, width=50)
-    with col_title:
-        st.title("BTX CS 월 별 대시보드")
-else:
-    st.title("📊 BTX CS 월 별 대시보드")
-
+# 3. 본문 제목 (택시 아이콘 적용)
+st.title("🚕 BTX CS 월 별 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
 # 사이드바 입력 및 파일 업로드
