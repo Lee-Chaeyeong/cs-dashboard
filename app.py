@@ -178,7 +178,7 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 오직 [완료] 건만 엄격 반영 ★)
+    # 3. 선택된 월 해지OB 필터링 (★ 오직 정확히 '완료' 2글자만 엄격 반영 ★)
     df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
     df_c_7 = pd.DataFrame()        # 순수 해지 완료건 분석용
     
@@ -198,10 +198,10 @@ if cs_sheets_dict:
                 else: return '4주차'
             df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week, axis=1)
             
-        # 순수 해지 [완료] 건만 쏙 추출 ('완료' 포함하고 '취소' 제외)
+        # ★ 핵심 수정: 공백 제거 후 오직 '완료' 2글자와 일치하는 건만 추출!
         if 'OB여부' in df_c_month_raw.columns:
             ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
-            df_c_7 = df_c_month_raw[ob_status.str.contains('완료', na=False) & ~ob_status.str.contains('취소', na=False)].copy()
+            df_c_7 = df_c_month_raw[ob_status == '완료'].copy()
         else:
             df_c_7 = df_c_month_raw.copy()
 
@@ -308,7 +308,7 @@ if cs_sheets_dict:
 
     # TAB 3: 해지OB 세부 분석 (오직 순수 [완료] 건만 차트 및 분석에 반영)
     with tab3:
-        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실해지 완료건만 반영)")
+        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (순수 해지 완료건만 반영)")
         
         if not df_c_month_raw.empty:
             total_cancel_raw = len(df_c_month_raw)
@@ -317,7 +317,7 @@ if cs_sheets_dict:
             # 해지 취소 건수
             cancelled_cnt = 0
             if 'OB여부' in df_c_month_raw.columns:
-                cancelled_cnt = len(df_c_month_raw[df_c_month_raw['OB여부'].astype(str).str.contains('해지 취소', na=False)])
+                cancelled_cnt = len(df_c_month_raw[df_c_month_raw['OB여부'].astype(str).str.strip().str.contains('해지 취소', na=False)])
             
             prod_counts = df_c_7['가맹'].value_counts().to_dict() if '가맹' in df_c_7.columns else {}
             prod_str = " / ".join([f"{k}: {v}건" for k, v in prod_counts.items()])
@@ -336,7 +336,7 @@ if cs_sheets_dict:
             ])
             
             with c_subtab1:
-                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (실해지 완료 총 {len(df_c_7)}건 기준)")
+                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (순수 해지 완료 총 {len(df_c_7)}건 기준)")
                 weeks = ['1주차', '2주차', '3주차', '4주차']
                 c_col_l, c_col_r = st.columns(2)
                 
@@ -362,7 +362,7 @@ if cs_sheets_dict:
                             st.info(f"{week_name} 해지 완료 데이터가 없습니다.")
 
             with c_subtab2:
-                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (실해지 완료 기준)")
+                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (순수 해지 완료 기준)")
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
                     if '해지사유' in df_c_7.columns:
@@ -402,10 +402,9 @@ if cs_sheets_dict:
             top_val = monthly_summary.iloc[0]['건수']
             top_pct = monthly_summary.iloc[0]['비중(%)']
             
-            summary_msg = f"### 📌 {selected_month_sheet} CS 종합 핵심 요약\n"
-            summary_msg += f"1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.\n"
-            summary_msg += f"2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.\n"
-            summary_msg += f"3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0}건** 중 **{len(df_c_7)}건 최종 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0}건 해지 취소(가맹유지 방어)**를 달성했습니다."
-            st.markdown(summary_msg)
+            st.markdown(f"""### 📌 {selected_month_sheet} CS 종합 핵심 요약
+1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val}건 / 총 {total_calls}건)**으로 전체 1위를 기록했습니다.
+2. **상담 예약 현황**: **{selected_month_sheet} 총 {len(df_res_7)}건**의 상담 예약이 인입되었습니다.
+3. **해지 OB 현황**: **{selected_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0}건** 중 **{len(df_c_7)}건 최종 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
