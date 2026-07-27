@@ -9,7 +9,7 @@ import datetime
 # 페이지 기본 설정
 st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
 
-# CSS 스타일 추가 (상단 여백 줄이기 및 탭 글자 크기 확대)
+# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기 확대/볼드/파란색, 메트릭 라벨 스타일 적용)
 st.markdown("""
     <style>
     /* 메인 화면 상단 여백 줄이기 */
@@ -17,10 +17,26 @@ st.markdown("""
         padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
     }
-    /* 탭(Tab) 메뉴 글씨 크기 확대 및 굵게 설정 */
+    /* 탭(Tab) 버튼 글씨 크기 확대(20px), 볼드체, 파란색 설정 */
     button[data-baseweb="tab"] p {
-        font-size: 19px !important;
+        font-size: 20px !important;
         font-weight: bold !important;
+        color: #1E88E5 !important;
+    }
+    /* 선택된 탭 강조 파란색 */
+    button[data-baseweb="tab"][aria-selected="true"] p {
+        color: #0D47A1 !important;
+    }
+    /* 메트릭(Metric) 상단 라벨 글씨 크기 확대, 볼드체, 파란색 설정 */
+    div[data-testid="stMetricLabel"] {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #1E88E5 !important;
+    }
+    div[data-testid="stMetricLabel"] * {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #1E88E5 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -278,7 +294,7 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    # 상단 요약 메트릭도 콤마 적용
+    # 상단 요약 메트릭
     st.success(f"✅ [{selected_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
@@ -353,12 +369,13 @@ if cs_sheets_dict:
         st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
-            m1.metric(f"📌 {selected_month_sheet} 누적 CS 상담 예약 건수", f"{len(df_res_7):,} 건")
+            # 요청하신 변경 명칭 적용 (CSS를 통해 폰트 UP, 볼드, 파란색 자동 적용)
+            m1.metric(f"📌 {display_month_sheet} CS 상담 예약 건수", f"{len(df_res_7):,} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
-            m2.metric("📌 최다 예약 운행 지역", f"{top_res_region}")
+            m2.metric("📌 최다 CS예약 접수 지역", f"{top_res_region}")
             
             ob_cnt = len(df[df['OB'].notna() & (df['OB'].astype(str).str.strip() != '')]) if 'OB' in df.columns else 0
-            m3.metric(f"📞 {selected_month_sheet} OB 건수", f"{ob_cnt:,} 건")
+            m3.metric(f"📞 {display_month_sheet} OB 건수", f"{ob_cnt:,} 건")
             
             r_col1, r_col2 = st.columns(2)
             with r_col1:
@@ -422,7 +439,7 @@ if cs_sheets_dict:
                 for idx, week_name in enumerate(weeks):
                     target_col = c_col_l if idx % 2 == 0 else c_col_r
                     with target_col:
-                        st.markdown(f"### 📌 해지 OB {week_name}")
+                        st.markdown(f"### 📌 {week_name}")
                         df_cw = df_c_7[df_c_7['주차'] == week_name] if '주차' in df_c_7.columns else pd.DataFrame()
                         if not df_cw.empty and '해지사유' in df_cw.columns:
                             r_summary = df_cw['해지사유'].value_counts().reset_index()
