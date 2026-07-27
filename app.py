@@ -182,40 +182,8 @@ if cs_sheets_dict:
     else:
         target_year, target_month = 2026, 7
 
-    # 1. 선택된 월 CS 인입 데이터 로드
+    # 1. 선택된 월 CS 인입
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
-
-    # =========================================================================
-    # ★ 핵심 수정 파트: 월별 시트의 '주차' 규칙을 스스로 학습해서 뽑아냅니다 ★
-    # =========================================================================
-    dynamic_week_ranges = []
-    
-    if not df.empty:
-        week_col_main = '주차' if '주차' in df.columns else None
-        date_col_main = None
-        for c in df.columns:
-            c_str = str(c).replace(' ', '')
-            if any(kw in c_str for kw in ['상담일자', '일자', '날짜', '접수일', '시간']):
-                date_col_main = c
-                break
-                
-        if week_col_main and date_col_main:
-            temp_df = df.copy()
-            temp_df['__dt__'] = pd.to_datetime(temp_df[date_col_main], errors='coerce')
-            temp_df = temp_df.dropna(subset=['__dt__', week_col_main])
-            
-            # 주차별로 날짜의 최소/최댓값을 구해서 "이 달의 주차 달력"을 만듭니다.
-            for w_name, grp in temp_df.groupby(week_col_main):
-                w_str = str(w_name).strip()
-                if '주' in w_str:
-                    dynamic_week_ranges.append({
-                        'min_d': grp['__dt__'].min().date(),
-                        'max_d': grp['__dt__'].max().date(),
-                        'week_name': w_str
-                    })
-            # 날짜순으로 정렬
-            dynamic_week_ranges.sort(key=lambda x: x['min_d'])
-    # =========================================================================
 
     # 2. 선택된 월 CS예약 필터링
     df_res_7 = pd.DataFrame()
@@ -225,46 +193,34 @@ if cs_sheets_dict:
         elif '예약시간_dt' in df_res_all.columns:
             df_res_7 = df_res_all[(df_res_all['예약시간_dt'].dt.year == target_year) & (df_res_all['예약시간_dt'].dt.month == target_month)]
 
-    # 3. 선택된 월 해지OB 필터링 (★ 월별 시트에서 학습한 규칙을 그대로 적용 ★)
-    df_c_month_raw = pd.DataFrame() 
-    df_c_7 = pd.DataFrame()        
+    # 3. 선택된 월 해지OB 필터링
+    df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
+    df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
     
     if not df_c_all.empty and 'OB일자_dt' in df_c_all.columns:
-        # D열(OB일자) 기준으로 해당 월 데이터 전체 추출
         df_c_month_raw = df_c_all[(df_c_all['OB일자_dt'].dt.year == target_year) & (df_c_all['OB일자_dt'].dt.month == target_month)].copy()
         
-        # 해지 OB 시트의 날짜를 방금 학습한 달력에 끼워 맞춥니다.
-        def assign_dynamic_week(row):
-            dt = row['OB일자_dt']
-            if pd.isna(dt): return '1주차'
-            d_val = dt.date()
+        def assign_week_robust(row):
+            for col_k in row.index:
+                col_s = str(col_k).strip()
+                if col_s in ['주차', '주'] and pd.notna(row[col_k]) and str(row[col_k]).strip() != '':
+                    v_str = str(row[col_k]).strip()
+                    if '1' in v_str: return '1주차'
+                    elif '2' in v_str: return '2주차'
+                    elif '3' in v_str: return '3주차'
+                    elif '4' in v_str or '5' in v_str: return '4주차'
+                    return v_str
             
-            # 학습한 달력이 있다면
-            if dynamic_week_ranges:
-                # 1. 완벽하게 그 범위 안에 들어가는지 확인
-                for w_info in dynamic_week_ranges:
-                    if w_info['min_d'] <= d_val <= w_info['max_d']:
-                        return w_info['week_name']
-                
-                # 2. 휴일 등으로 CS 데이터가 비어있던 날짜에 해지OB가 들어온 경우 (사이 날짜 편입)
-                if d_val < dynamic_week_ranges[0]['min_d']:
-                    return dynamic_week_ranges[0]['week_name']
-                if d_val > dynamic_week_ranges[-1]['max_d']:
-                    return dynamic_week_ranges[-1]['week_name']
-                for i in range(len(dynamic_week_ranges) - 1):
-                    if dynamic_week_ranges[i]['max_d'] < d_val < dynamic_week_ranges[i+1]['min_d']:
-                        # 보통 주말이므로 이전 주차로 편입
-                        return dynamic_week_ranges[i]['week_name']
-            
-            # 혹시라도 월별 시트에 데이터가 아예 없어 학습 실패 시 최후의 보루 (기계적 7일 나눔)
-            day_val = d_val.day
-            w_num = (day_val - 1) // 7 + 1
-            if w_num > 4: w_num = 4
-            return f"{w_num}주차"
+            dt = row['OB일자_dt'] if 'OB일자_dt' in row.index and pd.notna(row['OB일자_dt']) else None
+            if dt is None or pd.isna(dt): return '1주차'
+            d = dt.day
+            if d <= 5: return '1주차'
+            elif d <= 12: return '2주차'
+            elif d <= 19: return '3주차'
+            else: return '4주차'
 
-        df_c_month_raw['주차'] = df_c_month_raw.apply(assign_dynamic_week, axis=1)
+        df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week_robust, axis=1)
             
-        # 오직 '완료' 2글자와 일치하는 건만 추출 (공백 제거 후)
         if 'OB여부' in df_c_month_raw.columns:
             ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
             df_c_7 = df_c_month_raw[ob_status == '완료'].copy()
@@ -323,13 +279,20 @@ if cs_sheets_dict:
             total_calls = monthly_summary['건수'].sum()
             monthly_summary['비중(%)'] = (monthly_summary['건수'] / total_calls * 100).round(1)
             
+            # ★ 범례 이름 굵게(Bold) 표시를 위해 HTML 태그 적용
+            monthly_summary['대분류_범례'] = '<b>' + monthly_summary['대분류'].astype(str) + '</b>'
+            
             col1, col2 = st.columns(2)
             with col1:
-                fig_pie = px.pie(monthly_summary, names='대분류', values='건수', hole=0.4, title=f"<b>{selected_month_sheet} 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
-                fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=16))
+                # 도넛 차트 생성 (names 기준을 볼드체로 변경)
+                fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b>{selected_month_sheet} 누적 대분류 비중 (총 {total_calls}건)</b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                
+                # 도넛 안쪽 글씨 크기도 16 -> 18로 확대
+                fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
                 fig_pie.update_layout(
                     title_font=dict(size=22),
-                    legend=dict(font=dict(size=18)),
+                    # ★ 도넛 차트 옆 범례(Legend) 폰트 크기 대폭 확대 (18 -> 22)
+                    legend=dict(font=dict(size=22)),
                     margin=dict(t=80, b=50, l=40, r=40)
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
@@ -372,15 +335,14 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 3: 해지OB 세부 분석 (오직 실 해지 [완료] 건만 차트 및 분석에 반영)
+    # TAB 3: 해지OB 세부 분석
     with tab3:
         st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
         if not df_c_month_raw.empty:
             total_cancel_raw = len(df_c_month_raw)
-            completed_cnt = len(df_c_7) # 오직 실 해지 완료건
+            completed_cnt = len(df_c_7)
             
-            # 해지 취소 건수
             cancelled_cnt = 0
             if 'OB여부' in df_c_month_raw.columns:
                 cancelled_cnt = len(df_c_month_raw[df_c_month_raw['OB여부'].astype(str).str.strip().str.contains('해지 취소', na=False)])
