@@ -180,7 +180,7 @@ if cs_sheets_dict:
 
     # 3. 선택된 월 해지OB 필터링 (★ 오직 정확히 '완료' 2글자만 엄격 반영 ★)
     df_c_month_raw = pd.DataFrame() # 전체 해지 접수용
-    df_c_7 = pd.DataFrame()        # 순수 해지 완료건 분석용
+    df_c_7 = pd.DataFrame()        # 실 해지 완료건 분석용
     
     if not df_c_all.empty and 'OB일자_dt' in df_c_all.columns:
         # D열(OB일자) 기준으로 해당 월 데이터 전체 추출
@@ -198,7 +198,7 @@ if cs_sheets_dict:
                 else: return '4주차'
             df_c_month_raw['주차'] = df_c_month_raw.apply(assign_week, axis=1)
             
-        # ★ 핵심 수정: 공백 제거 후 오직 '완료' 2글자와 일치하는 건만 추출!
+        # 오직 '완료' 2글자와 일치하는 건만 추출
         if 'OB여부' in df_c_month_raw.columns:
             ob_status = df_c_month_raw['OB여부'].astype(str).str.strip()
             df_c_7 = df_c_month_raw[ob_status == '완료'].copy()
@@ -306,13 +306,13 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {selected_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 3: 해지OB 세부 분석 (오직 순수 [완료] 건만 차트 및 분석에 반영)
+    # TAB 3: 해지OB 세부 분석 (오직 실 해지 [완료] 건만 차트 및 분석에 반영)
     with tab3:
-        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (순수 해지 완료건만 반영)")
+        st.subheader(f"🚨 {selected_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
         if not df_c_month_raw.empty:
             total_cancel_raw = len(df_c_month_raw)
-            completed_cnt = len(df_c_7) # 오직 순수 완료건
+            completed_cnt = len(df_c_7) # 오직 실 해지 완료건
             
             # 해지 취소 건수
             cancelled_cnt = 0
@@ -320,13 +320,20 @@ if cs_sheets_dict:
                 cancelled_cnt = len(df_c_month_raw[df_c_month_raw['OB여부'].astype(str).str.strip().str.contains('해지 취소', na=False)])
             
             prod_counts = df_c_7['가맹'].value_counts().to_dict() if '가맹' in df_c_7.columns else {}
-            prod_str = " / ".join([f"{k}: {v}건" for k, v in prod_counts.items()])
             
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("📌 전체 해지 접수 건수", f"{total_cancel_raw} 건")
-            c2.metric("✅ 순수 해지 완료 (차트반영)", f"{completed_cnt} 건")
+            c2.metric("✅ 실 해지 완료 (차트반영)", f"{completed_cnt} 건")
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt} 건")
-            c4.metric("🏷️ 해지완료 가맹 상품 구성", prod_str if prod_str else "-")
+            
+            # 줄바꿈하여 짤림 없이 다 표시되도록 수정
+            with c4:
+                st.caption("🏷️ 해지완료 가맹 상품 구성")
+                if prod_counts:
+                    for k, v in prod_counts.items():
+                        st.write(f"• **{k}**: {v}건")
+                else:
+                    st.write("-")
             
             st.markdown("---")
             
@@ -336,7 +343,7 @@ if cs_sheets_dict:
             ])
             
             with c_subtab1:
-                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (순수 해지 완료 총 {len(df_c_7)}건 기준)")
+                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (실 해지 완료 총 {len(df_c_7)}건 기준)")
                 weeks = ['1주차', '2주차', '3주차', '4주차']
                 c_col_l, c_col_r = st.columns(2)
                 
@@ -362,7 +369,7 @@ if cs_sheets_dict:
                             st.info(f"{week_name} 해지 완료 데이터가 없습니다.")
 
             with c_subtab2:
-                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (순수 해지 완료 기준)")
+                st.subheader(f"📊 {selected_month_sheet} 해지사유 & 지역별 종합 차트 (실 해지 완료 기준)")
                 ch_col1, ch_col2 = st.columns(2)
                 with ch_col1:
                     if '해지사유' in df_c_7.columns:
