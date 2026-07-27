@@ -1,13 +1,20 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import requests
-import io
-import re
-import datetime
+import re  # 📌 누락되었던 필수 라이브러리 추가!
+from PIL import Image
 
-# 페이지 기본 설정
-st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
+# 📌 깃허브에 올린 로고 이미지 불러오기
+try:
+    logo = Image.open("20251218 PNG 축약형 로고_블루.png")
+except Exception:
+    logo = "📊"
+
+# 📌 브라우저 탭 제목 및 블루 로고 파비콘 적용
+st.set_page_config(
+    page_title="BTX CS 월 별 대시보드",
+    page_icon=logo,
+    layout="wide"
+)
 
 # CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기/볼드체/찐파랑(#003399), 메트릭 라벨 찐파랑 적용)
 st.markdown("""
