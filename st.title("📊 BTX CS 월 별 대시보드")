@@ -65,7 +65,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 BTX CS 월 별 대시보드")
+col_logo, col_title = st.columns([0.06, 0.94])
+with col_logo:
+    st.image(logo, width=45)
+with col_title:
+    st.title("BTX CS 월 별 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
 # 사이드바 입력 및 파일 업로드
