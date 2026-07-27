@@ -190,6 +190,9 @@ if cs_sheets_dict:
         
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
+    # 띄어쓰기가 들어간 표시용 월 문자열 (예: 26년 7월)
+    display_month_sheet = selected_month_sheet.replace("년", "년 ")
+    
     # 선택된 월 파싱
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
     if m_match:
@@ -291,7 +294,7 @@ if cs_sheets_dict:
     
     # TAB 1: 주차별 CS 인입 차트
     with tab1:
-        st.subheader(f"📅 {selected_month_sheet} 주차별 CS 인입 현황 (1주차 ~ 4주차 개별 세로 막대차트)")
+        st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
         col_left, col_right = st.columns(2)
         
@@ -319,7 +322,7 @@ if cs_sheets_dict:
 
     # TAB 2: 월마감 & CS예약 현황
     with tab2:
-        st.subheader(f"🍩 {selected_month_sheet} 월마감 전체 CS 인입 비중 및 CS예약 현황")
+        st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
             monthly_summary = df[cat_col].value_counts().reset_index()
             monthly_summary.columns = ['대분류', '건수']
@@ -345,7 +348,7 @@ if cs_sheets_dict:
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
         st.markdown("---")
-        st.subheader(f"📅 {selected_month_sheet} CS예약(NEW) 및 OB 현황")
+        st.subheader(f"📅 {selected_month_sheet} CS 예약 & OB 현황")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
             m1.metric(f"📌 {selected_month_sheet} 누적 CS 상담 예약 건수", f"{len(df_res_7)} 건")
@@ -410,7 +413,7 @@ if cs_sheets_dict:
             ])
             
             with c_subtab1:
-                st.subheader(f"📋 주차별 해지 사유 개별 세로 막대차트 (실 해지 완료 총 {len(df_c_7)}건 기준)")
+                st.subheader(f"📋 주차별 해지 사유 (실 해지 완료 총 {len(df_c_7)}건 기준)")
                 weeks = ['1주차', '2주차', '3주차', '4주차']
                 c_col_l, c_col_r = st.columns(2)
                 
