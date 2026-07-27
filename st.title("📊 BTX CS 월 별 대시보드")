@@ -65,10 +65,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-col_logo, col_title = st.columns([0.06, 0.94])
-with col_logo:
-    st.image(logo, width=45)
-with col_title:
+try:
+    col_logo, col_title = st.columns([0.08, 0.92])
+    with col_logo:
+        st.image("20251218 PNG 축약형 로고_블루.png", width=50)
+    with col_title:
+        st.title("BTX CS 월 별 대시보드")
+except Exception:
     st.title("BTX CS 월 별 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
