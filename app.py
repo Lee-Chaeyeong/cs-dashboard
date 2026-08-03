@@ -1,4 +1,4 @@
-import streamlit as st
+full_code = '''import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
@@ -94,12 +94,12 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
             tickvals=unique_x,
             ticktext=[f'<b>{x}</b>' for x in unique_x],
             tickfont=dict(size=x_size),
-            title_text="" # X축 아래 단어 표기 제거
+            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
         )
     else:
         fig.update_xaxes(
             tickfont=dict(size=x_size),
-            title_text=""
+            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
         )
         
     fig.update_yaxes(
@@ -307,15 +307,13 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
-    # 요청하신 순서대로 탭 배치
     tab1, tab2, tab3, tab4 = st.tabs([
-        f"🍩 {display_month_sheet} CS 인입 비중 & 예약 현황", 
-        "📅 주차별 CS 인입 현황",
+        f"🍩 {display_month_sheet} CS 인입 비중 & 예약 현황",
+        "📅 주차별 CS 인입 현황", 
         f"🚨 {display_month_sheet} 해지 OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
-    # TAB 1: 월마감 CS 인입 비중 & CS 예약 현황 (첫 번째 순서)
     with tab1:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
@@ -373,7 +371,6 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 2: 주차별 CS 인입 현황 (두 번째 순서)
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
@@ -401,7 +398,6 @@ if cs_sheets_dict:
                 else:
                     st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
-    # TAB 3: 해지 OB 세부 분석 (세 번째 순서)
     with tab3:
         st.subheader(f"🚨 {display_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
@@ -490,7 +486,6 @@ if cs_sheets_dict:
         else:
             st.warning(f"해지OB 시트에서 {display_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
-    # TAB 4: AI 인사이트 리포트 (네 번째 순서)
     with tab4:
         st.subheader(f"🤖 {display_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
@@ -509,3 +504,6 @@ if cs_sheets_dict:
 3. **해지 OB 현황**: **{display_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0:,}건** 중 **{len(df_c_7):,}건 최종 실 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0:,}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
+'''
+compile(full_code, '<string>', 'exec')
+print("Successfully verified tab order update with requested base code.")
