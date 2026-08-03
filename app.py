@@ -7,20 +7,21 @@ import re
 import datetime
 import os
 
-# 1. 페이지 기본 설정 (브라우저 탭 아이콘은 깃허브 로고 이미지 연동)
+# 1. 브라우저 탭 아이콘 연동 및 wide 레이아웃 설정
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
     page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🚖",
     layout="wide"
 )
 
-# 2. Pretendard 폰트 전면 적용 및 CSS 스타일링
+# 2. Pretendard 폰트 전면 적용 + 탭/메트릭/소제목 찐파랑(#003399) 강제 CSS
 st.markdown("""
     <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
+    /* Pretendard 폰트 전체 강제 적용 */
     * {
-        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
     }
 
     .stApp {
@@ -31,6 +32,7 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
 
+    /* 메트릭 카드 UI */
     div[data-testid="stMetric"], .stCard {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
@@ -39,28 +41,48 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
     }
 
+    /* 탭(Tab) 메뉴 버튼 - 22px + 볼드체 + 찐파랑(#003399) 강제 적용 */
+    div[data-testid="stTabs"] {
+        background-color: #FFFFFF;
+        padding: 6px 12px 0px 12px;
+        border-radius: 10px;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-bottom: 20px;
+    }
+
     div[data-testid="stTabs"] button,
-    button[data-baseweb="tab"],
-    div[data-baseweb="tab-list"] button {
-        padding: 8px 16px !important;
+    button[data-baseweb="tab"] {
+        padding: 10px 20px !important;
     }
 
     div[data-testid="stTabs"] button *,
+    div[data-testid="stTabs"] button p,
+    div[data-testid="stTabs"] button span,
     button[data-baseweb="tab"] *,
-    div[data-baseweb="tab-list"] button * {
+    button[data-baseweb="tab"] p,
+    button[data-baseweb="tab"] span {
         font-size: 22px !important;
         font-weight: 800 !important;
         color: #003399 !important;
     }
 
+    /* 선택된 활성 탭 강조 및 하단 바 찐파랑 설정 */
     div[data-testid="stTabs"] button[aria-selected="true"] *,
-    button[data-baseweb="tab"][aria-selected="true"] * {
+    div[data-testid="stTabs"] button[aria-selected="true"] p,
+    button[data-baseweb="tab"][aria-selected="true"] p {
         color: #001A66 !important;
         font-weight: 900 !important;
     }
 
+    div[data-baseweb="tab-highlight"] {
+        background-color: #003399 !important;
+    }
+
+    /* 메트릭(st.metric) 라벨 글자 확대 (20px) + 볼드체 + 찐파랑(#003399) 강제 적용 */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
+    div[data-testid="stMetricLabel"] p,
     [data-testid="stMetric"] label,
     [data-testid="stMetric"] label * {
         font-size: 20px !important;
@@ -74,6 +96,19 @@ st.markdown("""
         color: #0F172A !important;
     }
 
+    /* 모든 서브헤더 및 소제목 찐파랑(#003399) + 볼드체 강제 적용 */
+    div[data-testid="stHeadingWithAnchor"] h1,
+    div[data-testid="stHeadingWithAnchor"] h2,
+    div[data-testid="stHeadingWithAnchor"] h3,
+    div[data-testid="stHeadingWithAnchor"] h4,
+    .stMarkdown h1,
+    .stMarkdown h2,
+    .stMarkdown h3,
+    .stMarkdown h4 {
+        color: #003399 !important;
+        font-weight: 800 !important;
+    }
+
     div[data-testid="stNotification"] {
         border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
@@ -81,9 +116,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 본문 타이틀 (원래 택시 이모지)
+# 3. 본문 상단 타이틀
 st.title("🚖 BTX CS 월 별 대시보드")
-st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
+st.caption("구글 시트 및 엑셀 데이터를 실시간으로 자동 분석하여 월별·주차별·누적 CS 현황을 시각화합니다.")
 
 # 사이드바 데이터 연동 설정
 st.sidebar.header("🔗 데이터 연동 설정")
@@ -100,19 +135,20 @@ if st.sidebar.button("🔄 최신 데이터 새로고침"):
     st.cache_data.clear()
     st.rerun()
 
-# 블루 계열 컬러 정의
-BLUE_PIE_COLORS = ['#003399', '#1d4ed8', '#2563eb', '#3b82f6', '#0284c7', '#0f766e', '#1e3a8a', '#475569']
-GROUP_BAR_COLORS = ['#003399', '#0284c7', '#0d9488', '#2563eb', '#6366f1']
+# 파이 차트 및 그룹 차트용 파란색 계열 팔레트
+BLUE_PIE_COLORS = ['#003399', '#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#0284C7', '#0369A1', '#0F172A']
+GROUP_BAR_COLORS = ['#003399', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD']
 
+# 차트 스타일링 (X축 하단 명칭 완전 제거, 단일 차트 우측 범례 완전 제거, 천 단위 콤마 적용)
 def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19, y_size=17, title_size=22, is_group=False, force_bar_width=False):
     fig.update_traces(
-        texttemplate='<b>%{y:,.0f}건</b>',
+        texttemplate='<b>%{y:,.0f}건</b>',  # 천 단위 콤마(,) 자동 적용
         textposition='outside',
         textfont=dict(size=text_size),
         cliponaxis=False
     )
     
-    # 단일 막대 차트의 경우 알록달록한 색상을 제거하고 찐파랑(#003399)으로 일괄 고정
+    # 단일 막대 차트는 무조건 찐파랑(#003399) 단색 강제 지정
     if not is_group:
         fig.update_traces(marker_color='#003399')
     
@@ -132,12 +168,12 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
             tickvals=unique_x,
             ticktext=[f'<b>{x}</b>' for x in unique_x],
             tickfont=dict(size=x_size),
-            title_text="" # X축 아래 명칭 제거
+            title_text="" # X축 아래 하단 분류 명칭 완전 제거
         )
     else:
         fig.update_xaxes(
             tickfont=dict(size=x_size),
-            title_text=""
+            title_text="" # X축 아래 하단 분류 명칭 완전 제거
         )
         
     fig.update_yaxes(
@@ -146,12 +182,12 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
     )
     
     layout_args = dict(
-        title_font=dict(size=title_size),
+        title_font=dict(size=title_size, color='#003399'),
         margin=dict(t=70, b=70, l=50, r=50)
     )
     
     if not is_group:
-        layout_args['showlegend'] = False
+        layout_args['showlegend'] = False # 단일 차트 우측 범례 완전 제거
     else:
         layout_args['legend'] = dict(font=dict(size=x_size), title_text="")
 
@@ -257,6 +293,7 @@ if cs_sheets_dict:
         
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
+    # 26년 7월 띄어쓰기 통일 규격 (년도 뒤 한 칸 띄어쓰기)
     display_month_sheet = re.sub(r'년\s*', '년 ', selected_month_sheet).strip()
     
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
@@ -268,6 +305,7 @@ if cs_sheets_dict:
 
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
 
+    # 유연한 주차 규칙: 시트의 '주차' 데이터 자동 학습 및 연동 (5주차 포함)
     dynamic_week_ranges = []
     
     if not df.empty:
@@ -338,7 +376,7 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석이 완료되었습니다.")
+    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -349,7 +387,7 @@ if cs_sheets_dict:
     tab1, tab2, tab3, tab4 = st.tabs([
         f"🍩 {display_month_sheet} CS 인입 비중 & CS 예약 현황",
         "📅 주차별 CS 인입 현황",
-        f"🚨 {display_month_sheet} 해지 OB 세부 분석",
+        f"🚨 {display_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
@@ -368,21 +406,20 @@ if cs_sheets_dict:
                 fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=BLUE_PIE_COLORS)
                 fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
                 fig_pie.update_layout(
-                    title_font=dict(size=22),
+                    title_font=dict(size=22, color='#003399'),
                     legend=dict(font=dict(size=22)),
                     margin=dict(t=80, b=50, l=40, r=40)
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
             with col2:
                 max_m_cnt = monthly_summary['건수'].max() if not monthly_summary.empty else 10
-                # color 파라미터를 제거하여 단색 파란색으로 적용
                 fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 인입 건수</span></b>")
                 fig_m_bar.update_layout(height=500, yaxis_title="<b>건수 (건)</b>")
                 fig_m_bar = apply_chart_style(fig_m_bar, x_series=monthly_summary['대분류'], max_val=max_m_cnt, force_bar_width=True)
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
         st.markdown("---")
-        st.subheader(f"📅 {display_month_sheet} CS 예약 및 OB 집계")
+        st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
             m1.metric("📄 CS 상담 예약 건수", f"{len(df_res_7):,} 건")
@@ -412,13 +449,21 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 2: 주차별 CS 인입 현황
+    # TAB 2: 주차별 CS 인입 현황 (유연한 주차 동적 렌더링)
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
-        weeks = ['1주차', '2주차', '3주차', '4주차']
+        
+        # 데이터에 존재하는 실제 주차 목록을 동적으로 추출 (5주차 이상도 자동 포함)
+        if week_col and not df.empty:
+            available_weeks = sorted([str(w).strip() for w in df[week_col].unique() if pd.notna(w) and '주' in str(w)])
+            if not available_weeks:
+                available_weeks = ['1주차', '2주차', '3주차', '4주차']
+        else:
+            available_weeks = ['1주차', '2주차', '3주차', '4주차']
+
         col_left, col_right = st.columns(2)
         
-        for idx, week_name in enumerate(weeks):
+        for idx, week_name in enumerate(available_weeks):
             target_col = col_left if idx % 2 == 0 else col_right
             with target_col:
                 st.markdown(f"### 📌 {week_name}")
@@ -475,10 +520,17 @@ if cs_sheets_dict:
             
             with c_subtab1:
                 st.subheader(f"📋 주차별 해지 사유 (실 해지 완료 총 {len(df_c_7):,}건 기준)")
-                weeks = ['1주차', '2주차', '3주차', '4주차']
+                
+                if '주차' in df_c_7.columns and not df_c_7.empty:
+                    c_weeks = sorted([str(w).strip() for w in df_c_7['주차'].unique() if pd.notna(w) and '주' in str(w)])
+                    if not c_weeks:
+                        c_weeks = ['1주차', '2주차', '3주차', '4주차']
+                else:
+                    c_weeks = ['1주차', '2주차', '3주차', '4주차']
+
                 c_col_l, c_col_r = st.columns(2)
                 
-                for idx, week_name in enumerate(weeks):
+                for idx, week_name in enumerate(c_weeks):
                     target_col = c_col_l if idx % 2 == 0 else c_col_r
                     with target_col:
                         st.markdown(f"### 📌 {week_name}")
