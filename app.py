@@ -65,19 +65,22 @@ st.markdown(
        🔥 [우측 상단 전체화면 확대 버튼 클릭 시에만 작동하는 초대형 폰트 CSS] 🔥
        ========================================================================== */
 
-    /* 1. 확대 시 X축 하단 항목명 (가맹, 기사앱 등) -> 38px */
+    /* 1. 확대 시 X축 하단 항목명 (가맹, 기사앱, 정산 등) -> 38px 초대형 */
     :fullscreen svg .xtick text,
     :fullscreen svg .xtick text *,
     :fullscreen svg .xtick tspan,
     :-webkit-full-screen svg .xtick text,
     :-webkit-full-screen svg .xtick text *,
-    :-webkit-full-screen svg .xtick tspan {
+    :-webkit-full-screen svg .xtick tspan,
+    [data-fullscreen="true"] svg .xtick text,
+    [data-fullscreen="true"] svg .xtick text *,
+    [data-fullscreen="true"] svg .xtick tspan {
         font-size: 38px !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
-    /* 2. 확대 시 막대 상단 수치 (584건, 26건 등) -> 40px */
+    /* 2. 확대 시 막대 상단 수치 (584건, 26건 등) -> 42px 초대형 */
     :fullscreen svg .bartext,
     :fullscreen svg .bartext *,
     :fullscreen svg .bartext tspan,
@@ -89,44 +92,59 @@ st.markdown(
     :-webkit-full-screen svg .bartext tspan,
     :-webkit-full-screen svg .textpoint text,
     :-webkit-full-screen svg .textpoint text *,
-    :-webkit-full-screen svg .textpoint tspan {
-        font-size: 40px !important;
+    :-webkit-full-screen svg .textpoint tspan,
+    [data-fullscreen="true"] svg .bartext,
+    [data-fullscreen="true"] svg .bartext *,
+    [data-fullscreen="true"] svg .bartext tspan,
+    [data-fullscreen="true"] svg .textpoint text,
+    [data-fullscreen="true"] svg .textpoint text *,
+    [data-fullscreen="true"] svg .textpoint tspan {
+        font-size: 42px !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
-    /* 3. 확대 시 Y축 세로 수치 (0, 100, 200...) -> 26px */
+    /* 3. 확대 시 Y축 세로 수치 (0, 100, 200...) -> 28px */
     :fullscreen svg .ytick text,
     :fullscreen svg .ytick text *,
     :fullscreen svg .ytick tspan,
     :-webkit-full-screen svg .ytick text,
     :-webkit-full-screen svg .ytick text *,
-    :-webkit-full-screen svg .ytick tspan {
-        font-size: 26px !important;
+    :-webkit-full-screen svg .ytick tspan,
+    [data-fullscreen="true"] svg .ytick text,
+    [data-fullscreen="true"] svg .ytick text *,
+    [data-fullscreen="true"] svg .ytick tspan {
+        font-size: 28px !important;
         font-weight: 800 !important;
         fill: #334155 !important;
     }
 
-    /* 4. 확대 시 차트 제목 -> 40px */
+    /* 4. 확대 시 차트 제목 -> 40px 초대형 */
     :fullscreen svg .gtitle,
     :fullscreen svg .gtitle *,
     :fullscreen svg .gtitle tspan,
     :-webkit-full-screen svg .gtitle,
     :-webkit-full-screen svg .gtitle *,
-    :-webkit-full-screen svg .gtitle tspan {
+    :-webkit-full-screen svg .gtitle tspan,
+    [data-fullscreen="true"] svg .gtitle,
+    [data-fullscreen="true"] svg .gtitle *,
+    [data-fullscreen="true"] svg .gtitle tspan {
         font-size: 40px !important;
         font-weight: 900 !important;
         fill: #003399 !important;
     }
 
-    /* 5. 확대 시 범례 (Legend) -> 28px */
+    /* 5. 확대 시 범례 (Legend) -> 30px */
     :fullscreen svg .legendtext,
     :fullscreen svg .legendtext *,
     :fullscreen svg .legendtext tspan,
     :-webkit-full-screen svg .legendtext,
     :-webkit-full-screen svg .legendtext *,
-    :-webkit-full-screen svg .legendtext tspan {
-        font-size: 28px !important;
+    :-webkit-full-screen svg .legendtext tspan,
+    [data-fullscreen="true"] svg .legendtext,
+    [data-fullscreen="true"] svg .legendtext *,
+    [data-fullscreen="true"] svg .legendtext tspan {
+        font-size: 30px !important;
         font-weight: 800 !important;
         fill: #0F172A !important;
     }
@@ -261,10 +279,10 @@ def apply_chart_style(
     fig,
     x_series=None,
     max_val=None,
-    text_size=18,    # 기본 화면: 막대 상단 수치 18px
-    x_size=17,       # 기본 화면: X축 항목명 17px
-    y_size=15,       # 기본 화면: Y축 수치 15px
-    title_size=20,   # 기본 화면: 차트 제목 20px
+    text_size=18,    # 기본 일반 화면: 막대 상단 수치 18px
+    x_size=17,       # 기본 일반 화면: X축 항목명 17px
+    y_size=15,       # 기본 일반 화면: Y축 수치 15px
+    title_size=20,   # 기본 일반 화면: 차트 제목 20px
     is_group=False,
     force_bar_width=False,
 ):
