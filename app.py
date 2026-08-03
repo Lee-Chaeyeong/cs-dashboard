@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 CSS
+# 2. Pretendard 폰트 전면 적용 + [차트 전체화면 확대시에만] 글자 초대형 확대 CSS
 st.markdown(
     """
     <style>
@@ -31,6 +31,7 @@ st.markdown(
         background-color: #F8FAFC;
     }
     
+    /* 컴퓨터 모니터 해상도별 반응형 화면 폭 & 패딩 최적화 */
     .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
@@ -58,6 +59,62 @@ st.markdown(
         box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
         overflow: hidden !important;
         width: 100% !important;
+    }
+
+    /* 🔥 [핵심] 차트 '전체화면(확대)' 상태일 때만 선택적으로 폰트 크기 초대형 강제 가공 🔥 */
+    
+    /* 1. 확대 시 X축 하단 항목명 (가맹, 기사앱 등) -> 38px */
+    :fullscreen svg .xtick text,
+    :fullscreen svg .xtick tspan,
+    :-webkit-full-screen svg .xtick text,
+    :-webkit-full-screen svg .xtick tspan {
+        font-size: 38px !important;
+        font-weight: 900 !important;
+        fill: #0F172A !important;
+    }
+
+    /* 2. 확대 시 막대 상단 수치 (26건, 13건 등) -> 42px */
+    :fullscreen svg .bartext,
+    :fullscreen svg .bartext tspan,
+    :fullscreen svg .textpoint text,
+    :fullscreen svg .textpoint tspan,
+    :-webkit-full-screen svg .bartext,
+    :-webkit-full-screen svg .bartext tspan,
+    :-webkit-full-screen svg .textpoint text,
+    :-webkit-full-screen svg .textpoint tspan {
+        font-size: 42px !important;
+        font-weight: 900 !important;
+        fill: #0F172A !important;
+    }
+
+    /* 3. 확대 시 Y축 세로 수치 (0, 5, 10...) -> 28px */
+    :fullscreen svg .ytick text,
+    :fullscreen svg .ytick tspan,
+    :-webkit-full-screen svg .ytick text,
+    :-webkit-full-screen svg .ytick tspan {
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        fill: #334155 !important;
+    }
+
+    /* 4. 확대 시 차트 제목 -> 42px */
+    :fullscreen svg .gtitle,
+    :fullscreen svg .gtitle tspan,
+    :-webkit-full-screen svg .gtitle,
+    :-webkit-full-screen svg .gtitle tspan {
+        font-size: 42px !important;
+        font-weight: 900 !important;
+        fill: #003399 !important;
+    }
+
+    /* 5. 확대 시 범례 (Legend) -> 30px */
+    :fullscreen svg .legendtext,
+    :fullscreen svg .legendtext tspan,
+    :-webkit-full-screen svg .legendtext,
+    :-webkit-full-screen svg .legendtext tspan {
+        font-size: 30px !important;
+        font-weight: 800 !important;
+        fill: #0F172A !important;
     }
 
     /* 탭(Tab) 메뉴 레이아웃 */
@@ -185,19 +242,19 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 📢 [핵심 수정] 빔 프로젝터 발표용 초대형 차트 폰트 설정 (기본 크기 대폭 상향)
+# 차트 스타일링 (일반 화면 보기 모드용 깔끔한 기본 규격 원복)
 def apply_chart_style(
     fig,
     x_series=None,
     max_val=None,
-    text_size=30,    # 막대 상단 수치(25건 등): 18 -> 30px 대폭 확대
-    x_size=26,       # X축 항목명(가맹, 기사앱 등): 17 -> 26px 대폭 확대
-    y_size=22,       # Y축 수치(0, 5, 10...): 15 -> 22px 대폭 확대
-    title_size=30,   # 차트 제목: 20 -> 30px 대폭 확대
+    text_size=18,    # 일반 화면 기본값 (18px)
+    x_size=17,       # 일반 화면 기본값 (17px)
+    y_size=15,       # 일반 화면 기본값 (15px)
+    title_size=20,   # 일반 화면 기본값 (20px)
     is_group=False,
     force_bar_width=False,
 ):
-    # 1. 막대 상단 수치 (30px + 딥블랙 #0F172A + 볼드)
+    # 1. 막대 상단 수치 (기본 18px + 딥블랙 #0F172A + 볼드)
     fig.update_traces(
         texttemplate="<b>%{y:,.0f}건</b>",
         textposition="outside",
@@ -208,7 +265,7 @@ def apply_chart_style(
     if not is_group:
         fig.update_traces(marker_color="#003399")
 
-    # 2. X축 (하단 문의 항목명) 26px Bold
+    # 2. X축 (하단 문의 항목명) 17px
     if x_series is not None:
         unique_x = [str(x) for x in x_series.unique() if pd.notna(x)]
         n_cats = len(unique_x)
@@ -235,7 +292,7 @@ def apply_chart_style(
             automargin=True,
         )
 
-    # 3. Y축 수치 설정 (22px)
+    # 3. Y축 수치 설정 (15px)
     fig.update_yaxes(
         tickfont=dict(size=y_size, color="#334155", family="Pretendard"),
         title_font=dict(size=y_size, color="#334155", family="Pretendard"),
@@ -246,7 +303,7 @@ def apply_chart_style(
     layout_args = dict(
         font=dict(family="Pretendard", color="#0F172A"),
         title_font=dict(size=title_size, color="#003399", family="Pretendard"),
-        margin=dict(t=70, b=70, l=40, r=40),
+        margin=dict(t=60, b=60, l=40, r=40),
         autosize=True,
         uniformtext_minsize=text_size,
         uniformtext_mode="show",
@@ -258,7 +315,7 @@ def apply_chart_style(
         layout_args["legend"] = dict(
             orientation="h",
             yanchor="top",
-            y=-0.2,
+            y=-0.18,
             xanchor="center",
             x=0.5,
             font=dict(size=x_size, color="#0F172A", family="Pretendard"),
@@ -562,19 +619,19 @@ if cs_sheets_dict:
                 fig_pie.update_traces(
                     textinfo="percent+label",
                     textposition="inside",
-                    textfont=dict(size=20, color="#FFFFFF", family="Pretendard"),
+                    textfont=dict(size=16, color="#FFFFFF", family="Pretendard"),
                 )
                 fig_pie.update_layout(
                     height=500,
                     font=dict(family="Pretendard", color="#0F172A"),
-                    title_font=dict(size=30, color="#003399", family="Pretendard"),
+                    title_font=dict(size=20, color="#003399", family="Pretendard"),
                     legend=dict(
                         orientation="h",
                         yanchor="top",
                         y=-0.08,
                         xanchor="center",
                         x=0.5,
-                        font=dict(size=24, color="#0F172A", family="Pretendard"),
+                        font=dict(size=18, color="#0F172A", family="Pretendard"),
                     ),
                     margin=dict(t=60, b=80, l=20, r=20),
                     autosize=True,
