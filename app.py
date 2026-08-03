@@ -7,20 +7,20 @@ import re
 import datetime
 import os
 
-# 1. 브라우저 탭 아이콘 연동 및 wide 레이아웃 설정
+# 1. 페이지 기본 설정
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
     page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🚖",
     layout="wide"
 )
 
-# 2. Pretendard 폰트 전면 적용 + 탭/메트릭/소제목 찐파랑(#003399) 강제 CSS
+# 2. Pretendard 폰트 전면 적용 + 그림자 및 라인 기반 고도화 CSS
 st.markdown("""
     <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
     /* Pretendard 폰트 전체 강제 적용 */
-    * {
+    html, body, [class*="css"], .stApp, * {
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
     }
 
@@ -30,25 +30,35 @@ st.markdown("""
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 2rem !important;
+        max-width: 1400px;
     }
 
-    /* 메트릭 카드 UI */
+    /* 카드 컨테이너 스타일 (라인 + 소프트 그림자로 시인성 강화) */
     div[data-testid="stMetric"], .stCard {
         background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 12px !important;
+        padding: 18px 22px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    /* 차트 영역 카드 박스화 (실선 테두리 + 그림자 적용) */
+    div[data-testid="stPlotlyChart"] {
+        background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
-        padding: 16px 20px !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
     }
 
-    /* 탭(Tab) 메뉴 버튼 - 22px + 볼드체 + 찐파랑(#003399) 강제 적용 */
+    /* 탭(Tab) 메뉴 레이아웃 정돈 (라인 & 그림자) */
     div[data-testid="stTabs"] {
         background-color: #FFFFFF;
-        padding: 6px 12px 0px 12px;
-        border-radius: 10px;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-        margin-bottom: 20px;
+        padding: 8px 12px 0px 12px;
+        border-radius: 12px;
+        border: 1px solid #CBD5E1;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
     }
 
     div[data-testid="stTabs"] button,
@@ -67,7 +77,6 @@ st.markdown("""
         color: #003399 !important;
     }
 
-    /* 선택된 활성 탭 강조 및 하단 바 찐파랑 설정 */
     div[data-testid="stTabs"] button[aria-selected="true"] *,
     div[data-testid="stTabs"] button[aria-selected="true"] p,
     button[data-baseweb="tab"][aria-selected="true"] p {
@@ -77,9 +86,10 @@ st.markdown("""
 
     div[data-baseweb="tab-highlight"] {
         background-color: #003399 !important;
+        height: 3px !important;
     }
 
-    /* 메트릭(st.metric) 라벨 글자 확대 (20px) + 볼드체 + 찐파랑(#003399) 강제 적용 */
+    /* 메트릭 라벨 (20px + 볼드체 + 찐파랑 #003399) */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
     div[data-testid="stMetricLabel"] p,
@@ -96,7 +106,7 @@ st.markdown("""
         color: #0F172A !important;
     }
 
-    /* 모든 서브헤더 및 소제목 찐파랑(#003399) + 볼드체 강제 적용 */
+    /* 소제목 찐파랑(#003399) + 볼드체 일괄 적용 */
     div[data-testid="stHeadingWithAnchor"] h1,
     div[data-testid="stHeadingWithAnchor"] h2,
     div[data-testid="stHeadingWithAnchor"] h3,
@@ -109,9 +119,16 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
+    /* 구분선 및 시스템 알림 박스 레이아웃 라인 강화 */
+    hr {
+        border-top: 1px solid #CBD5E1 !important;
+        margin: 2rem 0 !important;
+    }
+
     div[data-testid="stNotification"] {
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         border: 1px solid #CBD5E1 !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -135,20 +152,19 @@ if st.sidebar.button("🔄 최신 데이터 새로고침"):
     st.cache_data.clear()
     st.rerun()
 
-# 파이 차트 및 그룹 차트용 파란색 계열 팔레트
+# 파란색 계열 전용 컬러 구성
 BLUE_PIE_COLORS = ['#003399', '#1D4ED8', '#2563EB', '#3B82F6', '#60A5FA', '#0284C7', '#0369A1', '#0F172A']
-GROUP_BAR_COLORS = ['#003399', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD']
+BLUE_GROUP_COLORS = ['#003399', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD']
 
-# 차트 스타일링 (X축 하단 명칭 완전 제거, 단일 차트 우측 범례 완전 제거, 천 단위 콤마 적용)
+# 차트 스타일링 (Plotly 내부 폰트 Pretendard 및 레이아웃 반영)
 def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19, y_size=17, title_size=22, is_group=False, force_bar_width=False):
     fig.update_traces(
-        texttemplate='<b>%{y:,.0f}건</b>',  # 천 단위 콤마(,) 자동 적용
+        texttemplate='<b>%{y:,.0f}건</b>',
         textposition='outside',
-        textfont=dict(size=text_size),
+        textfont=dict(size=text_size, family="Pretendard"),
         cliponaxis=False
     )
     
-    # 단일 막대 차트는 무조건 찐파랑(#003399) 단색 강제 지정
     if not is_group:
         fig.update_traces(marker_color='#003399')
     
@@ -167,32 +183,33 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
             tickmode='array',
             tickvals=unique_x,
             ticktext=[f'<b>{x}</b>' for x in unique_x],
-            tickfont=dict(size=x_size),
-            title_text="" # X축 아래 하단 분류 명칭 완전 제거
+            tickfont=dict(size=x_size, family="Pretendard"),
+            title_text=""
         )
     else:
         fig.update_xaxes(
-            tickfont=dict(size=x_size),
-            title_text="" # X축 아래 하단 분류 명칭 완전 제거
+            tickfont=dict(size=x_size, family="Pretendard"),
+            title_text=""
         )
         
     fig.update_yaxes(
-        tickfont=dict(size=y_size),
-        title_font=dict(size=y_size)
+        tickfont=dict(size=y_size, family="Pretendard"),
+        title_font=dict(size=y_size, family="Pretendard")
     )
     
     layout_args = dict(
-        title_font=dict(size=title_size, color='#003399'),
+        font=dict(family="Pretendard"),
+        title_font=dict(size=title_size, color='#003399', family="Pretendard"),
         margin=dict(t=70, b=70, l=50, r=50)
     )
     
     if not is_group:
-        layout_args['showlegend'] = False # 단일 차트 우측 범례 완전 제거
+        layout_args['showlegend'] = False
     else:
-        layout_args['legend'] = dict(font=dict(size=x_size), title_text="")
+        layout_args['legend'] = dict(font=dict(size=x_size, family="Pretendard"), title_text="")
 
     if max_val is not None:
-        layout_args['yaxis'] = dict(range=[0, max_val * 1.38], tickfont=dict(size=y_size), title_font=dict(size=y_size))
+        layout_args['yaxis'] = dict(range=[0, max_val * 1.38], tickfont=dict(size=y_size, family="Pretendard"), title_font=dict(size=y_size, family="Pretendard"))
     
     fig.update_layout(**layout_args)
     return fig
@@ -276,7 +293,6 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
 
     return cs_sheets_dict, df_res_all, df_c_all, cs_sheets
 
-# 데이터 로딩
 cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
 
 if cs_sheets_dict:
@@ -293,7 +309,6 @@ if cs_sheets_dict:
         
     selected_month_sheet = st.sidebar.selectbox("조회할 월을 선택하세요", select_options, index=default_index)
     
-    # 26년 7월 띄어쓰기 통일 규격 (년도 뒤 한 칸 띄어쓰기)
     display_month_sheet = re.sub(r'년\s*', '년 ', selected_month_sheet).strip()
     
     m_match = re.search(r'(\d+)년\s*(\d+)월', selected_month_sheet)
@@ -305,7 +320,6 @@ if cs_sheets_dict:
 
     df = cs_sheets_dict.get(selected_month_sheet, pd.DataFrame())
 
-    # 유연한 주차 규칙: 시트의 '주차' 데이터 자동 학습 및 연동 (5주차 포함)
     dynamic_week_ranges = []
     
     if not df.empty:
@@ -404,10 +418,11 @@ if cs_sheets_dict:
             col1, col2 = st.columns(2)
             with col1:
                 fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=BLUE_PIE_COLORS)
-                fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
+                fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18, family="Pretendard"))
                 fig_pie.update_layout(
-                    title_font=dict(size=22, color='#003399'),
-                    legend=dict(font=dict(size=22)),
+                    font=dict(family="Pretendard"),
+                    title_font=dict(size=22, color='#003399', family="Pretendard"),
+                    legend=dict(font=dict(size=22, family="Pretendard")),
                     margin=dict(t=80, b=50, l=40, r=40)
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
@@ -449,11 +464,10 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # TAB 2: 주차별 CS 인입 현황 (유연한 주차 동적 렌더링)
+    # TAB 2: 주차별 CS 인입 현황
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         
-        # 데이터에 존재하는 실제 주차 목록을 동적으로 추출 (5주차 이상도 자동 포함)
         if week_col and not df.empty:
             available_weeks = sorted([str(w).strip() for w in df[week_col].unique() if pd.notna(w) and '주' in str(w)])
             if not available_weeks:
@@ -571,7 +585,7 @@ if cs_sheets_dict:
                         reg_reason_df['지역_범례'] = '<b>' + reg_reason_df['지역'].astype(str) + '</b>'
                         max_rr_cnt = reg_reason_df['건수'].max() if not reg_reason_df.empty else 10
                         
-                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역_범례', barmode='group', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 & 해지 사유별 비교</span></b>", color_discrete_sequence=GROUP_BAR_COLORS)
+                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역_범례', barmode='group', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 & 해지 사유별 비교</span></b>", color_discrete_sequence=BLUE_GROUP_COLORS)
                         fig_reg_reason.update_layout(height=500, yaxis_title="<b>건수 (건)</b>")
                         fig_reg_reason = apply_chart_style(fig_reg_reason, x_series=reg_reason_df['해지사유'], max_val=max_rr_cnt, is_group=True)
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
