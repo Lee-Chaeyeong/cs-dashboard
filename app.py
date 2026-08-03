@@ -59,7 +59,7 @@ st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
-    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=832497432#gid=832497432",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help="구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야 합니다."
 )
@@ -307,14 +307,14 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
+    # 순서 변경: 1. 인입 비중, 2. 주차별 차트, 3. 해지 세부 분석, 4. 인사이트 리포트
     tab1, tab2, tab3, tab4 = st.tabs([
         f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황",
-        "📅 주차별 차트 (1주차~4주차)",
+        "📅 주차별 개별 차트 (1주차~4주차)", 
         f"🚨 {display_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
-    # [수정] 탭 1로 마감 인입 비중 이동
     with tab1:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
@@ -372,7 +372,6 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
-    # [수정] 탭 2로 주차별 차트 이동
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
