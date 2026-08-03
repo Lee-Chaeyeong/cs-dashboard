@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 동적 확대 CSS 적용
+# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 자동 비례 확대 CSS
 st.markdown(
     """
     <style>
@@ -61,35 +61,42 @@ st.markdown(
         width: 100% !important;
     }
 
-    /* 🔥 [핵심 추가] 차트 전체화면(확대) 시 글자 크기 비례 동적 확대 CSS 🔥 */
-    div[data-testid="stPlotlyChart"]:fullscreen .xtick text,
-    :fullscreen .xtick text {
-        font-size: 24px !important;
-        font-weight: 800 !important;
-        fill: #0F172A !important;
-    }
-    div[data-testid="stPlotlyChart"]:fullscreen .ytick text,
-    :fullscreen .ytick text {
-        font-size: 20px !important;
-        fill: #334155 !important;
-    }
-    div[data-testid="stPlotlyChart"]:fullscreen .bartext,
-    div[data-testid="stPlotlyChart"]:fullscreen .textpoint text,
-    :fullscreen .bartext,
-    :fullscreen .textpoint text {
-        font-size: 26px !important;
+    /* 🔥 [수정] 차트 전체화면(Fullscreen) 확대 시 화면 비율(vw)로 글자 크기 강제 동적 확대 🔥 */
+    *:fullscreen svg .xtick text,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .xtick text,
+    div[data-testid="element-container"]:fullscreen svg .xtick text {
+        font-size: 1.8vw !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
-    div[data-testid="stPlotlyChart"]:fullscreen .gtitle,
-    :fullscreen .gtitle {
-        font-size: 28px !important;
-        font-weight: 800 !important;
+
+    *:fullscreen svg .ytick text,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .ytick text,
+    div[data-testid="element-container"]:fullscreen svg .ytick text {
+        font-size: 1.3vw !important;
+        font-weight: 700 !important;
+        fill: #334155 !important;
+    }
+
+    *:fullscreen svg .textpoint text,
+    *:fullscreen svg .bartext,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .textpoint text,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .bartext {
+        font-size: 2.1vw !important;
+        font-weight: 900 !important;
+        fill: #0F172A !important;
+    }
+
+    *:fullscreen svg .gtitle,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .gtitle {
+        font-size: 2.2vw !important;
+        font-weight: 900 !important;
         fill: #003399 !important;
     }
-    div[data-testid="stPlotlyChart"]:fullscreen .legendtext,
-    :fullscreen .legendtext {
-        font-size: 22px !important;
+
+    *:fullscreen svg .legendtext,
+    div[data-testid="stPlotlyChart"]:fullscreen svg .legendtext {
+        font-size: 1.6vw !important;
         font-weight: 800 !important;
         fill: #0F172A !important;
     }
@@ -219,7 +226,7 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 차트 스타일링 (기본 폰트 설정 및 크기 유지)
+# 차트 스타일링
 def apply_chart_style(
     fig,
     x_series=None,
