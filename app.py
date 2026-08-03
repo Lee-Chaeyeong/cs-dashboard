@@ -7,19 +7,18 @@ import re
 import datetime
 import os
 
-# 1. 페이지 기본 설정 (브라우저 탭 아이콘은 깃허브 이미지, wide 레이아웃 유지)
+# 1. 페이지 기본 설정 (브라우저 탭 아이콘은 깃허브 로고 이미지 연동)
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
     page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🚖",
     layout="wide"
 )
 
-# 2. Pretendard 폰트 전면 적용, 여백 및 찐파랑(#003399) CSS 스타일링
+# 2. Pretendard 폰트 전면 적용 및 CSS 스타일링
 st.markdown("""
     <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
-    /* Pretendard 폰트 일괄 적용 */
     * {
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
     }
@@ -32,7 +31,6 @@ st.markdown("""
         padding-bottom: 2rem !important;
     }
 
-    /* 카드형 컨테이너 디자인 */
     div[data-testid="stMetric"], .stCard {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
@@ -41,7 +39,6 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
     }
 
-    /* 탭(Tab) 메뉴 버튼 확대 (22px) + 볼드체 + 찐파랑(#003399) */
     div[data-testid="stTabs"] button,
     button[data-baseweb="tab"],
     div[data-baseweb="tab-list"] button {
@@ -62,7 +59,6 @@ st.markdown("""
         font-weight: 900 !important;
     }
 
-    /* 메트릭 라벨 찐파랑(#003399) 적용 */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
     [data-testid="stMetric"] label,
@@ -85,7 +81,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 본문 상단 타이틀 (원래 택시 이모지)
+# 3. 본문 타이틀 (원래 택시 이모지)
 st.title("🚖 BTX CS 월 별 대시보드")
 st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
 
@@ -104,6 +100,10 @@ if st.sidebar.button("🔄 최신 데이터 새로고침"):
     st.cache_data.clear()
     st.rerun()
 
+# 블루 계열 컬러 정의
+BLUE_PIE_COLORS = ['#003399', '#1d4ed8', '#2563eb', '#3b82f6', '#0284c7', '#0f766e', '#1e3a8a', '#475569']
+GROUP_BAR_COLORS = ['#003399', '#0284c7', '#0d9488', '#2563eb', '#6366f1']
+
 def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19, y_size=17, title_size=22, is_group=False, force_bar_width=False):
     fig.update_traces(
         texttemplate='<b>%{y:,.0f}건</b>',
@@ -111,6 +111,10 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
         textfont=dict(size=text_size),
         cliponaxis=False
     )
+    
+    # 단일 막대 차트의 경우 알록달록한 색상을 제거하고 찐파랑(#003399)으로 일괄 고정
+    if not is_group:
+        fig.update_traces(marker_color='#003399')
     
     if x_series is not None:
         unique_x = [str(x) for x in x_series.unique() if pd.notna(x)]
@@ -128,12 +132,12 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
             tickvals=unique_x,
             ticktext=[f'<b>{x}</b>' for x in unique_x],
             tickfont=dict(size=x_size),
-            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
+            title_text="" # X축 아래 명칭 제거
         )
     else:
         fig.update_xaxes(
             tickfont=dict(size=x_size),
-            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
+            title_text=""
         )
         
     fig.update_yaxes(
@@ -334,7 +338,7 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
+    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석이 완료되었습니다.")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -345,7 +349,7 @@ if cs_sheets_dict:
     tab1, tab2, tab3, tab4 = st.tabs([
         f"🍩 {display_month_sheet} CS 인입 비중 & CS 예약 현황",
         "📅 주차별 CS 인입 현황",
-        f"🚨 {display_month_sheet} 해지OB 세부 분석",
+        f"🚨 {display_month_sheet} 해지 OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
@@ -361,7 +365,7 @@ if cs_sheets_dict:
             
             col1, col2 = st.columns(2)
             with col1:
-                fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                fig_pie = px.pie(monthly_summary, names='대분류_범례', values='건수', hole=0.4, title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 비중 (총 {total_calls:,}건)</span></b>", color_discrete_sequence=BLUE_PIE_COLORS)
                 fig_pie.update_traces(textinfo='percent+label', textposition='inside', textfont=dict(size=18))
                 fig_pie.update_layout(
                     title_font=dict(size=22),
@@ -371,28 +375,29 @@ if cs_sheets_dict:
                 st.plotly_chart(fig_pie, use_container_width=True)
             with col2:
                 max_m_cnt = monthly_summary['건수'].max() if not monthly_summary.empty else 10
-                fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', color='대분류', title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 인입 건수</span></b>", color_discrete_sequence=px.colors.qualitative.Bold)
+                # color 파라미터를 제거하여 단색 파란색으로 적용
+                fig_m_bar = px.bar(monthly_summary, x='대분류', y='건수', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 인입 건수</span></b>")
                 fig_m_bar.update_layout(height=500, yaxis_title="<b>건수 (건)</b>")
                 fig_m_bar = apply_chart_style(fig_m_bar, x_series=monthly_summary['대분류'], max_val=max_m_cnt, force_bar_width=True)
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
         st.markdown("---")
-        st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
+        st.subheader(f"📅 {display_month_sheet} CS 예약 및 OB 집계")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
-            m1.metric(f"📌 {display_month_sheet} CS 상담 예약 건수", f"{len(df_res_7):,} 건")
+            m1.metric("📄 CS 상담 예약 건수", f"{len(df_res_7):,} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
-            m2.metric("📌 최다 CS예약 접수 지역", f"{top_res_region}")
+            m2.metric("📌 최다 접수 지역", f"{top_res_region}")
             
             ob_cnt = len(df[df['OB'].notna() & (df['OB'].astype(str).str.strip() != '')]) if 'OB' in df.columns else 0
-            m3.metric(f"📞 {display_month_sheet} OB 건수", f"{ob_cnt:,} 건")
+            m3.metric("📞 총 OB 진행 건수", f"{ob_cnt:,} 건")
             
             r_col1, r_col2 = st.columns(2)
             with r_col1:
                 if '운행 지역' in df_res_7.columns:
                     res_reg_df = df_res_7['운행 지역'].value_counts().reset_index()
                     res_reg_df.columns = ['운행 지역', '예약건수']
-                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b><span style='color:#003399;'>{display_month_sheet} CS예약 건수 (지역별)</span></b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 CS예약 건수</span></b>")
                     fig_res_reg.update_layout(height=480, yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_reg = apply_chart_style(fig_res_reg, x_series=res_reg_df['운행 지역'], max_val=res_reg_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_reg, use_container_width=True)
@@ -400,7 +405,7 @@ if cs_sheets_dict:
                 if '문의 사항' in df_res_7.columns:
                     res_inq_df = df_res_7['문의 사항'].value_counts().reset_index()
                     res_inq_df.columns = ['문의 사항', '예약건수']
-                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b><span style='color:#003399;'>{display_month_sheet} CS예약 건수 (문의별)</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 CS예약 건수</span></b>")
                     fig_res_inq.update_layout(height=480, yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
@@ -425,9 +430,8 @@ if cs_sheets_dict:
                     max_cnt = week_summary['건수'].max() if not week_summary.empty else 10
                     
                     fig = px.bar(
-                        week_summary, x='분류', y='건수', text='건수', color='분류',
-                        title=f"<b><span style='color:#003399;'>{week_name} 분류별 CS 건수 (총 {len(df_week):,}건)</span></b>",
-                        color_discrete_sequence=px.colors.qualitative.Pastel
+                        week_summary, x='분류', y='건수', text='건수',
+                        title=f"<b><span style='color:#003399;'>{week_name} 분류별 CS 건수 (총 {len(df_week):,}건)</span></b>"
                     )
                     fig.update_layout(height=480, yaxis_title="<b>건수 (건)</b>")
                     fig = apply_chart_style(fig, x_series=week_summary['분류'], max_val=max_cnt, force_bar_width=True)
@@ -485,9 +489,8 @@ if cs_sheets_dict:
                             max_rc = r_summary['건수'].max()
                             
                             fig_cw_reason = px.bar(
-                                r_summary, x='해지사유', y='건수', text='건수', color='해지사유',
-                                title=f"<b><span style='color:#003399;'>해지 OB {week_name} 완료건 해지사유별 건수 (총 {len(df_cw):,}건)</span></b>",
-                                color_discrete_sequence=px.colors.qualitative.Pastel
+                                r_summary, x='해지사유', y='건수', text='건수',
+                                title=f"<b><span style='color:#003399;'>해지 OB {week_name} 완료건 해지사유별 건수 (총 {len(df_cw):,}건)</span></b>"
                             )
                             fig_cw_reason.update_layout(height=450, yaxis_title="<b>건수 (건)</b>")
                             fig_cw_reason = apply_chart_style(fig_cw_reason, x_series=r_summary['해지사유'], max_val=max_rc, force_bar_width=True)
@@ -504,7 +507,7 @@ if cs_sheets_dict:
                         reason_df.columns = ['해지사유', '건수']
                         max_r_cnt = reason_df['건수'].max() if not reason_df.empty else 10
                         
-                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', color='해지사유', title=f"<b><span style='color:#003399;'>{display_month_sheet} 해지사유별 건수 (총 {len(df_c_7):,}건)</span></b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                        fig_reason = px.bar(reason_df, x='해지사유', y='건수', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 해지사유별 건수 (총 {len(df_c_7):,}건)</span></b>")
                         fig_reason.update_layout(height=500, yaxis_title="<b>건수 (건)</b>")
                         fig_reason = apply_chart_style(fig_reason, x_series=reason_df['해지사유'], max_val=max_r_cnt, force_bar_width=True)
                         st.plotly_chart(fig_reason, use_container_width=True)
@@ -516,7 +519,7 @@ if cs_sheets_dict:
                         reg_reason_df['지역_범례'] = '<b>' + reg_reason_df['지역'].astype(str) + '</b>'
                         max_rr_cnt = reg_reason_df['건수'].max() if not reg_reason_df.empty else 10
                         
-                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역_범례', barmode='group', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 & 해지 사유별 비교</span></b>", color_discrete_sequence=px.colors.qualitative.Set2)
+                        fig_reg_reason = px.bar(reg_reason_df, x='해지사유', y='건수', color='지역_범례', barmode='group', text='건수', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 & 해지 사유별 비교</span></b>", color_discrete_sequence=GROUP_BAR_COLORS)
                         fig_reg_reason.update_layout(height=500, yaxis_title="<b>건수 (건)</b>")
                         fig_reg_reason = apply_chart_style(fig_reg_reason, x_series=reg_reason_df['해지사유'], max_val=max_rr_cnt, is_group=True)
                         st.plotly_chart(fig_reg_reason, use_container_width=True)
