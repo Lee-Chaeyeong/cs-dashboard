@@ -308,40 +308,13 @@ if cs_sheets_dict:
         df = df.dropna(subset=[cat_col])
         
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📅 주차별 개별 차트 (1주차~4주차)", 
-        f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황",
+        f"🍩 {display_month_sheet} CS 인입 비중 & CS 예약 현황",
+        "📅 주차별 CS 인입 현황",
         f"🚨 {display_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
     with tab1:
-        st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
-        weeks = ['1주차', '2주차', '3주차', '4주차']
-        col_left, col_right = st.columns(2)
-        
-        for idx, week_name in enumerate(weeks):
-            target_col = col_left if idx % 2 == 0 else col_right
-            with target_col:
-                st.markdown(f"### 📌 {week_name}")
-                df_week = df[df[week_col] == week_name] if week_col else pd.DataFrame()
-                
-                if not df_week.empty:
-                    week_summary = df_week[cat_col].value_counts().reset_index()
-                    week_summary.columns = ['분류', '건수']
-                    max_cnt = week_summary['건수'].max() if not week_summary.empty else 10
-                    
-                    fig = px.bar(
-                        week_summary, x='분류', y='건수', text='건수', color='분류',
-                        title=f"<b><span style='color:#003399;'>{week_name} 분류별 CS 건수 (총 {len(df_week):,}건)</span></b>",
-                        color_discrete_sequence=px.colors.qualitative.Pastel
-                    )
-                    fig.update_layout(height=480, yaxis_title="<b>건수 (건)</b>")
-                    fig = apply_chart_style(fig, x_series=week_summary['분류'], max_val=max_cnt, force_bar_width=True)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"{week_name} 데이터가 존재하지 않습니다.")
-
-    with tab2:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
             monthly_summary = df[cat_col].value_counts().reset_index()
@@ -397,6 +370,33 @@ if cs_sheets_dict:
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
+
+    with tab2:
+        st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
+        weeks = ['1주차', '2주차', '3주차', '4주차']
+        col_left, col_right = st.columns(2)
+        
+        for idx, week_name in enumerate(weeks):
+            target_col = col_left if idx % 2 == 0 else col_right
+            with target_col:
+                st.markdown(f"### 📌 {week_name}")
+                df_week = df[df[week_col] == week_name] if week_col else pd.DataFrame()
+                
+                if not df_week.empty:
+                    week_summary = df_week[cat_col].value_counts().reset_index()
+                    week_summary.columns = ['분류', '건수']
+                    max_cnt = week_summary['건수'].max() if not week_summary.empty else 10
+                    
+                    fig = px.bar(
+                        week_summary, x='분류', y='건수', text='건수', color='분류',
+                        title=f"<b><span style='color:#003399;'>{week_name} 분류별 CS 건수 (총 {len(df_week):,}건)</span></b>",
+                        color_discrete_sequence=px.colors.qualitative.Pastel
+                    )
+                    fig.update_layout(height=480, yaxis_title="<b>건수 (건)</b>")
+                    fig = apply_chart_style(fig, x_series=week_summary['분류'], max_val=max_cnt, force_bar_width=True)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
     with tab3:
         st.subheader(f"🚨 {display_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
