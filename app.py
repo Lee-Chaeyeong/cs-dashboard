@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 해상도별 완전 반응형 CSS 적용
+# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 동적 확대 CSS 적용
 st.markdown(
     """
     <style>
@@ -50,7 +50,7 @@ st.markdown(
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
     }
 
-    /* 차트 영역 카드화 (가로 스크롤바 방지 및 반응형 밀착) */
+    /* 차트 영역 카드화 */
     div[data-testid="stPlotlyChart"] {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
@@ -59,6 +59,39 @@ st.markdown(
         box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
         overflow: hidden !important;
         width: 100% !important;
+    }
+
+    /* 🔥 [핵심 추가] 차트 전체화면(확대) 시 글자 크기 비례 동적 확대 CSS 🔥 */
+    div[data-testid="stPlotlyChart"]:fullscreen .xtick text,
+    :fullscreen .xtick text {
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        fill: #0F172A !important;
+    }
+    div[data-testid="stPlotlyChart"]:fullscreen .ytick text,
+    :fullscreen .ytick text {
+        font-size: 20px !important;
+        fill: #334155 !important;
+    }
+    div[data-testid="stPlotlyChart"]:fullscreen .bartext,
+    div[data-testid="stPlotlyChart"]:fullscreen .textpoint text,
+    :fullscreen .bartext,
+    :fullscreen .textpoint text {
+        font-size: 26px !important;
+        font-weight: 900 !important;
+        fill: #0F172A !important;
+    }
+    div[data-testid="stPlotlyChart"]:fullscreen .gtitle,
+    :fullscreen .gtitle {
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        fill: #003399 !important;
+    }
+    div[data-testid="stPlotlyChart"]:fullscreen .legendtext,
+    :fullscreen .legendtext {
+        font-size: 22px !important;
+        font-weight: 800 !important;
+        fill: #0F172A !important;
     }
 
     /* 탭(Tab) 메뉴 레이아웃 */
@@ -186,7 +219,7 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 차트 스타일링 (반응형 짤림 방지 및 선명도 극대화 버젼)
+# 차트 스타일링 (기본 폰트 설정 및 크기 유지)
 def apply_chart_style(
     fig,
     x_series=None,
@@ -198,7 +231,7 @@ def apply_chart_style(
     is_group=False,
     force_bar_width=False,
 ):
-    # 1. 막대 상단 수치 (선명한 딥블랙 #0F172A + 볼드)
+    # 1. 막대 상단 수치 (기본 18px + 딥블랙 #0F172A + 볼드)
     fig.update_traces(
         texttemplate="<b>%{y:,.0f}건</b>",
         textposition="outside",
@@ -209,7 +242,7 @@ def apply_chart_style(
     if not is_group:
         fig.update_traces(marker_color="#003399")
 
-    # 2. X축 (하단 문의 항목명) 강제 선명화 및 여백 자동 맞춤
+    # 2. X축 (하단 문의 항목명) 17px
     if x_series is not None:
         unique_x = [str(x) for x in x_series.unique() if pd.notna(x)]
         n_cats = len(unique_x)
@@ -236,19 +269,21 @@ def apply_chart_style(
             automargin=True,
         )
 
-    # 3. Y축 수치 설정
+    # 3. Y축 수치 설정 (15px)
     fig.update_yaxes(
         tickfont=dict(size=y_size, color="#334155", family="Pretendard"),
         title_font=dict(size=y_size, color="#334155", family="Pretendard"),
         automargin=True,
     )
 
-    # 4. 레이아웃 폰트 고대비 및 마진 최적화
+    # 4. 레이아웃
     layout_args = dict(
         font=dict(family="Pretendard", color="#0F172A"),
         title_font=dict(size=title_size, color="#003399", family="Pretendard"),
-        margin=dict(t=60, b=50, l=40, r=40),
+        margin=dict(t=60, b=60, l=40, r=40),
         autosize=True,
+        uniformtext_minsize=text_size,
+        uniformtext_mode="show",
     )
 
     if not is_group:
@@ -257,7 +292,7 @@ def apply_chart_style(
         layout_args["legend"] = dict(
             orientation="h",
             yanchor="top",
-            y=-0.15,
+            y=-0.18,
             xanchor="center",
             x=0.5,
             font=dict(size=x_size, color="#0F172A", family="Pretendard"),
@@ -563,7 +598,6 @@ if cs_sheets_dict:
                     textposition="inside",
                     textfont=dict(size=16, color="#FFFFFF", family="Pretendard"),
                 )
-                # 도넛 차트 높이(height=500) 및 범례 폰트 확대(size=18, color=#0F172A)
                 fig_pie.update_layout(
                     height=500,
                     font=dict(family="Pretendard", color="#0F172A"),
