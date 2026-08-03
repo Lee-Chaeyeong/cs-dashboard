@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 자동 비례 확대 CSS
+# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 강제 비례 확대 CSS (tspan 포함)
 st.markdown(
     """
     <style>
@@ -61,42 +61,68 @@ st.markdown(
         width: 100% !important;
     }
 
-    /* 🔥 [수정] 차트 전체화면(Fullscreen) 확대 시 화면 비율(vw)로 글자 크기 강제 동적 확대 🔥 */
-    *:fullscreen svg .xtick text,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .xtick text,
-    div[data-testid="element-container"]:fullscreen svg .xtick text {
-        font-size: 1.8vw !important;
+    /* 🔥 [핵심 수정] 전체화면(Full Screen) 확대 시 모든 Plotly SVG 텍스트 & tspan 강제 확대 🔥 */
+    
+    /* 1. X축 하단 항목명 (가맹, 기사앱, 정산 등) 전체화면 시 26px 확대 */
+    :fullscreen svg .xtick text,
+    :fullscreen svg .xtick text *,
+    :fullscreen svg .xtick tspan,
+    :-webkit-full-screen svg .xtick text,
+    :-webkit-full-screen svg .xtick text *,
+    :-webkit-full-screen svg .xtick tspan {
+        font-size: 26px !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
-    *:fullscreen svg .ytick text,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .ytick text,
-    div[data-testid="element-container"]:fullscreen svg .ytick text {
-        font-size: 1.3vw !important;
-        font-weight: 700 !important;
+    /* 2. 막대 상단 수치 (25건, 13건 등) 전체화면 시 28px 확대 */
+    :fullscreen svg .bartext,
+    :fullscreen svg .bartext *,
+    :fullscreen svg .textpoint text,
+    :fullscreen svg .textpoint text *,
+    :fullscreen svg .textpoint tspan,
+    :-webkit-full-screen svg .bartext,
+    :-webkit-full-screen svg .bartext *,
+    :-webkit-full-screen svg .textpoint text,
+    :-webkit-full-screen svg .textpoint text *,
+    :-webkit-full-screen svg .textpoint tspan {
+        font-size: 28px !important;
+        font-weight: 900 !important;
+        fill: #0F172A !important;
+    }
+
+    /* 3. Y축 세로 수치 (0, 5, 10, 15...) 전체화면 시 22px 확대 */
+    :fullscreen svg .ytick text,
+    :fullscreen svg .ytick text *,
+    :fullscreen svg .ytick tspan,
+    :-webkit-full-screen svg .ytick text,
+    :-webkit-full-screen svg .ytick text *,
+    :-webkit-full-screen svg .ytick tspan {
+        font-size: 22px !important;
+        font-weight: 800 !important;
         fill: #334155 !important;
     }
 
-    *:fullscreen svg .textpoint text,
-    *:fullscreen svg .bartext,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .textpoint text,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .bartext {
-        font-size: 2.1vw !important;
-        font-weight: 900 !important;
-        fill: #0F172A !important;
-    }
-
-    *:fullscreen svg .gtitle,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .gtitle {
-        font-size: 2.2vw !important;
+    /* 4. 차트 제목 전체화면 시 32px 확대 */
+    :fullscreen svg .gtitle,
+    :fullscreen svg .gtitle *,
+    :fullscreen svg .gtitle tspan,
+    :-webkit-full-screen svg .gtitle,
+    :-webkit-full-screen svg .gtitle *,
+    :-webkit-full-screen svg .gtitle tspan {
+        font-size: 32px !important;
         font-weight: 900 !important;
         fill: #003399 !important;
     }
 
-    *:fullscreen svg .legendtext,
-    div[data-testid="stPlotlyChart"]:fullscreen svg .legendtext {
-        font-size: 1.6vw !important;
+    /* 5. 범례 (Legend) 전체화면 시 22px 확대 */
+    :fullscreen svg .legendtext,
+    :fullscreen svg .legendtext *,
+    :fullscreen svg .legendtext tspan,
+    :-webkit-full-screen svg .legendtext,
+    :-webkit-full-screen svg .legendtext *,
+    :-webkit-full-screen svg .legendtext tspan {
+        font-size: 22px !important;
         font-weight: 800 !important;
         fill: #0F172A !important;
     }
@@ -226,7 +252,7 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 차트 스타일링
+# 차트 스타일링 (기본 창 모드에서의 스타일링)
 def apply_chart_style(
     fig,
     x_series=None,
