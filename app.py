@@ -1,4 +1,4 @@
-full_code = '''import streamlit as st
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
@@ -59,7 +59,7 @@ st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
-    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=832497432#gid=832497432",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help="구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야 합니다."
 )
@@ -308,12 +308,13 @@ if cs_sheets_dict:
         df = df.dropna(subset=[cat_col])
         
     tab1, tab2, tab3, tab4 = st.tabs([
-        f"🍩 {display_month_sheet} CS 인입 비중 & 예약 현황",
-        "📅 주차별 CS 인입 현황", 
-        f"🚨 {display_month_sheet} 해지 OB 세부 분석",
+        f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황",
+        "📅 주차별 차트 (1주차~4주차)",
+        f"🚨 {display_month_sheet} 해지OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
+    # [수정] 탭 1로 마감 인입 비중 이동
     with tab1:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
@@ -371,6 +372,7 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
+    # [수정] 탭 2로 주차별 차트 이동
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
@@ -504,6 +506,3 @@ if cs_sheets_dict:
 3. **해지 OB 현황**: **{display_month_sheet} 총 해지 접수 {total_cancel_raw if 'total_cancel_raw' in locals() else 0:,}건** 중 **{len(df_c_7):,}건 최종 실 해지 완료**, **{cancelled_cnt if 'cancelled_cnt' in locals() else 0:,}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info("👈 왼쪽 사이드바에서 구글 시트 URL을 입력하시거나, 엑셀 파일(.xlsx)을 업로드해 주세요!")
-'''
-compile(full_code, '<string>', 'exec')
-print("Successfully verified tab order update with requested base code.")
