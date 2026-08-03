@@ -7,14 +7,14 @@ import re
 import datetime
 import os
 
-# 1. 페이지 기본 설정 (깃허브 로고 자동 연동 및 기본 세팅)
+# 1. 페이지 기본 설정 (원래 wide 레이아웃 유지)
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
-    page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🔷",
+    page_icon="🚖",
     layout="wide"
 )
 
-# 2. Pretendard 폰트 전면 적용, 레이아웃 정돈, 라인 및 그림자 카드 UI 고도화 CSS
+# 2. Pretendard 폰트 전면 적용 및 화면 디자인 스타일링 CSS
 st.markdown("""
     <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
@@ -24,30 +24,29 @@ st.markdown("""
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
     }
 
-    /* 대시보드 전체 배경 및 구조 정돈 */
+    /* 대시보드 전체 배경 및 기본 여백 원복 */
     .stApp {
         background-color: #F8FAFC;
     }
     .block-container {
-        padding-top: 1.2rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 2rem !important;
-        max-width: 1400px;
     }
 
-    /* 카드형 컨테이너 UI 고도화 (테두리 + 그림자 + 라운딩) */
+    /* 메트릭 카드형 컨테이너 디자인 (원래 흰색 테두리 카드 스타일) */
     div[data-testid="stMetric"], .stCard {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-radius: 12px !important;
+        border-radius: 10px !important;
         padding: 16px 20px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
     }
 
     /* 탭(Tab) 메뉴 디자인 정돈 */
     div[data-testid="stTabs"] {
         background-color: #FFFFFF;
-        padding: 8px 12px 0px 12px;
-        border-radius: 12px;
+        padding: 6px 12px 0px 12px;
+        border-radius: 10px;
         border: 1px solid #E2E8F0;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
         margin-bottom: 20px;
@@ -55,12 +54,12 @@ st.markdown("""
 
     div[data-testid="stTabs"] button,
     button[data-baseweb="tab"] {
-        padding: 10px 20px !important;
+        padding: 8px 16px !important;
     }
 
     div[data-testid="stTabs"] button *,
     button[data-baseweb="tab"] * {
-        font-size: 20px !important;
+        font-size: 19px !important;
         font-weight: 700 !important;
         color: #475569 !important;
     }
@@ -77,37 +76,28 @@ st.markdown("""
     div[data-testid="stMetricLabel"] *,
     [data-testid="stMetric"] label,
     [data-testid="stMetric"] label * {
-        font-size: 18px !important;
+        font-size: 17px !important;
         font-weight: 800 !important;
         color: #003399 !important;
     }
     
     div[data-testid="stMetricValue"] * {
-        font-size: 28px !important;
+        font-size: 26px !important;
         font-weight: 900 !important;
         color: #0F172A !important;
     }
 
     /* 알림 박스 스타일 정돈 */
     div[data-testid="stNotification"] {
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 상단 로고 이미지 배치 및 메인 타이틀
-logo_path = "20251218 PNG 축약형 로고_블루.png"
-if os.path.exists(logo_path):
-    col_logo, col_title = st.columns([0.7, 9.3])
-    with col_logo:
-        st.image(logo_path, width=60)
-    with col_title:
-        st.markdown("<h1 style='margin-top:-2px; color:#0F172A; font-weight:800; font-size: 32px;'>BTX CS 월 별 대시보드</h1>", unsafe_allow_html=True)
-else:
-    st.markdown("<h1 style='color:#0F172A; font-weight:800; font-size: 32px;'>🔷 BTX CS 월 별 대시보드</h1>", unsafe_allow_html=True)
-
-st.caption("구글 시트 및 엑셀 데이터를 실시간 연동하여 월별/주차별/누적 CS 현황을 자동 시각화합니다.")
+# 3. 원복된 상단 타이틀 (원래 택시 이모지 타이틀)
+st.title("🚖 BTX CS 월 별 대시보드")
+st.caption("구글 시트 및 엑셀 데이터를 실시간으로 자동 분석하여 월별·주차별·누적 CS 현황을 시각화합니다.")
 
 # 사이드바 데이터 연동 설정
 st.sidebar.header("🔗 데이터 연동 설정")
@@ -256,9 +246,8 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
 
     return cs_sheets_dict, df_res_all, df_c_all, cs_sheets
 
-# 데이터 로딩 로직 (표준 원형 대기 UI 적용)
-with st.spinner("데이터를 분석 중입니다... 잠시만 기다려 주세요."):
-    cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
+# 데이터 로딩
+cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
 
 if cs_sheets_dict:
     st.sidebar.markdown("---")
@@ -355,7 +344,8 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석 완료!")
+    # 원래 상단 성공 박스 문구 원복
+    st.success(f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) / 실해지 완료({len(df_c_7):,}건) 데이터 분석이 완료되었습니다.")
     
     week_col = '주차' if '주차' in df.columns else None
     cat_col = '분류' if '분류' in df.columns else ('대분류' if '대분류' in df.columns else None)
@@ -363,17 +353,17 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
-    # 정돈된 탭 메뉴 순서 배치
+    # 요청하신 탭 순서 설정
     tab1, tab2, tab3, tab4 = st.tabs([
         f"🍩 {display_month_sheet} CS 인입 비중 & CS 예약 현황",
         "📅 주차별 CS 인입 현황",
-        f"🚨 {display_month_sheet} 해지OB 세부 분석",
+        f"🚨 {display_month_sheet} 해지 OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
-    # TAB 1: 월마감 CS 인입 비중 & CS 예약 현황
+    # TAB 1: 월마감 CS 인입 비중 & CS 예약 현황 (원래 이미지 구성)
     with tab1:
-        st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
+        st.subheader(f"📈 {display_month_sheet} CS 인입 비중 및 월간 현황")
         if cat_col:
             monthly_summary = df[cat_col].value_counts().reset_index()
             monthly_summary.columns = ['대분류', '건수']
@@ -399,22 +389,22 @@ if cs_sheets_dict:
                 st.plotly_chart(fig_m_bar, use_container_width=True)
                 
         st.markdown("---")
-        st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
+        st.subheader(f"📅 {display_month_sheet} CS 예약 및 OB 집계")
         if not df_res_7.empty:
             m1, m2, m3 = st.columns(3)
-            m1.metric(f"📌 {display_month_sheet} CS 상담 예약 건수", f"{len(df_res_7):,} 건")
+            m1.metric("📄 CS 상담 예약 건수", f"{len(df_res_7):,} 건")
             top_res_region = df_res_7['운행 지역'].mode()[0] if '운행 지역' in df_res_7.columns and not df_res_7['운행 지역'].empty else "부산"
-            m2.metric("📌 최다 CS예약 접수 지역", f"{top_res_region}")
+            m2.metric("📌 최다 접수 지역", f"{top_res_region}")
             
             ob_cnt = len(df[df['OB'].notna() & (df['OB'].astype(str).str.strip() != '')]) if 'OB' in df.columns else 0
-            m3.metric(f"📞 {display_month_sheet} OB 건수", f"{ob_cnt:,} 건")
+            m3.metric("📞 총 OB 진행 건수", f"{ob_cnt:,} 건")
             
             r_col1, r_col2 = st.columns(2)
             with r_col1:
                 if '운행 지역' in df_res_7.columns:
                     res_reg_df = df_res_7['운행 지역'].value_counts().reset_index()
                     res_reg_df.columns = ['운행 지역', '예약건수']
-                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b><span style='color:#003399;'>{display_month_sheet} CS예약 건수 (지역별)</span></b>", color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_res_reg = px.bar(res_reg_df, x='운행 지역', y='예약건수', text='예약건수', color='운행 지역', title=f"<b><span style='color:#003399;'>{display_month_sheet} 지역별 CS예약 건수</span></b>", color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_res_reg.update_layout(height=480, yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_reg = apply_chart_style(fig_res_reg, x_series=res_reg_df['운행 지역'], max_val=res_reg_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_reg, use_container_width=True)
@@ -422,7 +412,7 @@ if cs_sheets_dict:
                 if '문의 사항' in df_res_7.columns:
                     res_inq_df = df_res_7['문의 사항'].value_counts().reset_index()
                     res_inq_df.columns = ['문의 사항', '예약건수']
-                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b><span style='color:#003399;'>{display_month_sheet} CS예약 건수 (문의별)</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
+                    fig_res_inq = px.bar(res_inq_df, x='문의 사항', y='예약건수', text='예약건수', color='문의 사항', title=f"<b><span style='color:#003399;'>{display_month_sheet} 문의별 CS예약 건수</span></b>", color_discrete_sequence=px.colors.qualitative.Set3)
                     fig_res_inq.update_layout(height=480, yaxis_title="<b>예약건수 (건)</b>")
                     fig_res_inq = apply_chart_style(fig_res_inq, x_series=res_inq_df['문의 사항'], max_val=res_inq_df['예약건수'].max(), force_bar_width=True)
                     st.plotly_chart(fig_res_inq, use_container_width=True)
@@ -477,12 +467,12 @@ if cs_sheets_dict:
             c3.metric("🔄 해지 취소(가맹유지)", f"{cancelled_cnt:,} 건")
             
             with c4:
-                st.markdown("""<div style="font-size: 20px; font-weight: 800; color: #003399; margin-bottom: 8px;">🏷️ 해지완료 가맹 상품</div>""", unsafe_allow_html=True)
+                st.markdown("""<div style="font-size: 17px; font-weight: 800; color: #003399; margin-bottom: 8px;">🏷️ 해지완료 가맹 상품</div>""", unsafe_allow_html=True)
                 if prod_counts:
                     for k, v in prod_counts.items():
-                        st.markdown(f"""<div style="font-size: 1.5rem; font-weight: 600; line-height: 1.4;">• {k}: {v:,}건</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div style="font-size: 1.4rem; font-weight: 700; line-height: 1.4; color: #0F172A;">• {k}: {v:,}건</div>""", unsafe_allow_html=True)
                 else:
-                    st.markdown("""<div style="font-size: 1.5rem; font-weight: 600;">-</div>""", unsafe_allow_html=True)
+                    st.markdown("""<div style="font-size: 1.4rem; font-weight: 700; color: #0F172A;">-</div>""", unsafe_allow_html=True)
             
             st.markdown("---")
             
