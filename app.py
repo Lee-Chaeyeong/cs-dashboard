@@ -5,57 +5,111 @@ import requests
 import io
 import re
 import datetime
+import os
 
-# 페이지 기본 설정
-st.set_page_config(page_title="BTX CS 월 별 대시보드", layout="wide")
+# 1. 페이지 기본 설정 (깃허브 로고 자동 연동 및 기본 세팅)
+st.set_page_config(
+    page_title="BTX CS 월 별 대시보드",
+    page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🔷",
+    layout="wide"
+)
 
-# CSS 스타일 추가 (상단 여백 줄이기, 탭 글자 크기/볼드체/찐파랑(#003399), 메트릭 라벨 찐파랑 적용)
+# 2. Pretendard 폰트 전면 적용, 레이아웃 정돈, 라인 및 그림자 카드 UI 고도화 CSS
 st.markdown("""
     <style>
-    /* 메인 화면 상단 여백 줄이기 */
-    .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 1rem !important;
+    @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+    /* Pretendard 폰트 일괄 적용 */
+    * {
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif !important;
     }
 
-    /* 1. 탭(Tab) 메뉴 버튼 글자 확대 (22px) + 볼드체 + 찐파랑(#003399) */
+    /* 대시보드 전체 배경 및 구조 정돈 */
+    .stApp {
+        background-color: #F8FAFC;
+    }
+    .block-container {
+        padding-top: 1.2rem !important;
+        padding-bottom: 2rem !important;
+        max-width: 1400px;
+    }
+
+    /* 카드형 컨테이너 UI 고도화 (테두리 + 그림자 + 라운딩) */
+    div[data-testid="stMetric"], .stCard {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+    }
+
+    /* 탭(Tab) 메뉴 디자인 정돈 */
+    div[data-testid="stTabs"] {
+        background-color: #FFFFFF;
+        padding: 8px 12px 0px 12px;
+        border-radius: 12px;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        margin-bottom: 20px;
+    }
+
     div[data-testid="stTabs"] button,
-    button[data-baseweb="tab"],
-    div[data-baseweb="tab-list"] button {
-        padding: 8px 16px !important;
+    button[data-baseweb="tab"] {
+        padding: 10px 20px !important;
     }
 
     div[data-testid="stTabs"] button *,
-    button[data-baseweb="tab"] *,
-    div[data-baseweb="tab-list"] button * {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-        color: #003399 !important;
+    button[data-baseweb="tab"] * {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
     }
 
-    /* 선택된 활성 탭 강조 (더 짙은 찐파랑 #001A66) */
+    /* 선택된 활성 탭 (찐파랑 강조) */
     div[data-testid="stTabs"] button[aria-selected="true"] *,
     button[data-baseweb="tab"][aria-selected="true"] * {
-        color: #001A66 !important;
+        color: #003399 !important;
         font-weight: 900 !important;
     }
 
-    /* 2. 메트릭(st.metric) 라벨 글자 확대 (20px) + 볼드체 + 찐파랑(#003399) */
+    /* 메트릭 상단 라벨 찐파랑(#003399) & 숫자는 볼드 다크톤 */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
     [data-testid="stMetric"] label,
     [data-testid="stMetric"] label * {
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: 800 !important;
         color: #003399 !important;
+    }
+    
+    div[data-testid="stMetricValue"] * {
+        font-size: 28px !important;
+        font-weight: 900 !important;
+        color: #0F172A !important;
+    }
+
+    /* 알림 박스 스타일 정돈 */
+    div[data-testid="stNotification"] {
+        border-radius: 10px !important;
+        border: 1px solid #CBD5E1 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 BTX CS 월 별 대시보드")
-st.caption("구글 시트 및 엑셀 데이터를 자동 분석하여 월별/주차별/누적 현황을 실시간으로 시각화합니다.")
+# 3. 상단 로고 이미지 배치 및 메인 타이틀
+logo_path = "20251218 PNG 축약형 로고_블루.png"
+if os.path.exists(logo_path):
+    col_logo, col_title = st.columns([0.7, 9.3])
+    with col_logo:
+        st.image(logo_path, width=60)
+    with col_title:
+        st.markdown("<h1 style='margin-top:-2px; color:#0F172A; font-weight:800; font-size: 32px;'>BTX CS 월 별 대시보드</h1>", unsafe_allow_html=True)
+else:
+    st.markdown("<h1 style='color:#0F172A; font-weight:800; font-size: 32px;'>🔷 BTX CS 월 별 대시보드</h1>", unsafe_allow_html=True)
 
-# 사이드바 입력 및 파일 업로드
+st.caption("구글 시트 및 엑셀 데이터를 실시간 연동하여 월별/주차별/누적 CS 현황을 자동 시각화합니다.")
+
+# 사이드바 데이터 연동 설정
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력", 
@@ -94,12 +148,12 @@ def apply_chart_style(fig, x_series=None, max_val=None, text_size=20, x_size=19,
             tickvals=unique_x,
             ticktext=[f'<b>{x}</b>' for x in unique_x],
             tickfont=dict(size=x_size),
-            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
+            title_text="" # X축 아래 단어 표기 제거
         )
     else:
         fig.update_xaxes(
             tickfont=dict(size=x_size),
-            title_text="" # 모든 차트의 X축 아래 하단 명칭 삭제
+            title_text=""
         )
         
     fig.update_yaxes(
@@ -202,7 +256,9 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
 
     return cs_sheets_dict, df_res_all, df_c_all, cs_sheets
 
-cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
+# 데이터 로딩 로직 (표준 원형 대기 UI 적용)
+with st.spinner("데이터를 분석 중입니다... 잠시만 기다려 주세요."):
+    cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = load_all_workbook_data(gsheet_url, uploaded_file)
 
 if cs_sheets_dict:
     st.sidebar.markdown("---")
@@ -307,6 +363,7 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
+    # 정돈된 탭 메뉴 순서 배치
     tab1, tab2, tab3, tab4 = st.tabs([
         f"🍩 {display_month_sheet} CS 인입 비중 & CS 예약 현황",
         "📅 주차별 CS 인입 현황",
@@ -314,6 +371,7 @@ if cs_sheets_dict:
         "🤖 AI 인사이트 리포트"
     ])
     
+    # TAB 1: 월마감 CS 인입 비중 & CS 예약 현황
     with tab1:
         st.subheader(f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황")
         if cat_col:
@@ -371,6 +429,7 @@ if cs_sheets_dict:
         else:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
+    # TAB 2: 주차별 CS 인입 현황
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
         weeks = ['1주차', '2주차', '3주차', '4주차']
@@ -398,6 +457,7 @@ if cs_sheets_dict:
                 else:
                     st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
+    # TAB 3: 해지 OB 세부 분석
     with tab3:
         st.subheader(f"🚨 {display_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)")
         
@@ -486,6 +546,7 @@ if cs_sheets_dict:
         else:
             st.warning(f"해지OB 시트에서 {display_month_sheet} 해지 데이터를 찾을 수 없습니다.")
 
+    # TAB 4: AI 인사이트 리포트
     with tab4:
         st.subheader(f"🤖 {display_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
