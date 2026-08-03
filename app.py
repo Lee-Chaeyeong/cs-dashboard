@@ -7,14 +7,14 @@ import re
 import datetime
 import os
 
-# 1. 페이지 기본 설정
+# 1. 페이지 기본 설정 (와이드 레이아웃 적용)
 st.set_page_config(
     page_title="BTX CS 월 별 대시보드",
     page_icon="20251218 PNG 축약형 로고_블루.png" if os.path.exists("20251218 PNG 축약형 로고_블루.png") else "🚖",
     layout="wide"
 )
 
-# 2. Pretendard 폰트 전면 적용 + 그림자 및 라인 기반 고도화 CSS
+# 2. Pretendard 폰트 전면 적용 + 화면 넓게(100%) 복구 + 카드/차트/탭 선명한 그림자(Shadow) 및 라인 CSS
 st.markdown("""
     <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
@@ -27,37 +27,41 @@ st.markdown("""
     .stApp {
         background-color: #F8FAFC;
     }
+    
+    /* 화면 폭 제한 제거 (전체 화면 넓게 사용 복구) */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 2rem !important;
-        max-width: 1400px;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        max-width: 100% !important;
     }
 
-    /* 카드 컨테이너 스타일 (라인 + 소프트 그림자로 시인성 강화) */
+    /* 메트릭 카드 (선명한 입체 그림자 + 테두리 라인) */
     div[data-testid="stMetric"], .stCard {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 12px !important;
         padding: 18px 22px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
     }
 
-    /* 차트 영역 카드 박스화 (실선 테두리 + 그림자 적용) */
+    /* 차트 영역 카드화 (선명한 입체 그림자 + 테두리 라인) */
     div[data-testid="stPlotlyChart"] {
         background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
+        border: 1px solid #CBD5E1 !important;
         border-radius: 12px !important;
-        padding: 12px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+        padding: 14px !important;
+        box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
     }
 
-    /* 탭(Tab) 메뉴 레이아웃 정돈 (라인 & 그림자) */
+    /* 탭(Tab) 메뉴 레이아웃 (선명한 그림자 + 테두리 라인) */
     div[data-testid="stTabs"] {
         background-color: #FFFFFF;
         padding: 8px 12px 0px 12px;
         border-radius: 12px;
         border: 1px solid #CBD5E1;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.06) !important;
         margin-bottom: 24px;
     }
 
@@ -106,7 +110,7 @@ st.markdown("""
         color: #0F172A !important;
     }
 
-    /* 소제목 찐파랑(#003399) + 볼드체 일괄 적용 */
+    /* 모든 소제목 찐파랑(#003399) + 볼드체 일괄 적용 */
     div[data-testid="stHeadingWithAnchor"] h1,
     div[data-testid="stHeadingWithAnchor"] h2,
     div[data-testid="stHeadingWithAnchor"] h3,
@@ -119,7 +123,7 @@ st.markdown("""
         font-weight: 800 !important;
     }
 
-    /* 구분선 및 시스템 알림 박스 레이아웃 라인 강화 */
+    /* 구분선 및 시스템 알림 박스 (라인 & 그림자 적용) */
     hr {
         border-top: 1px solid #CBD5E1 !important;
         margin: 2rem 0 !important;
@@ -128,7 +132,7 @@ st.markdown("""
     div[data-testid="stNotification"] {
         border-radius: 10px !important;
         border: 1px solid #CBD5E1 !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04) !important;
     }
     </style>
 """, unsafe_allow_html=True)
