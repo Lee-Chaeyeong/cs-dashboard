@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 모니터 사양별 반응형 CSS 적용
+# 2. Pretendard 폰트 전면 적용 + 해상도별 완전 반응형 CSS 적용
 st.markdown(
     """
     <style>
@@ -31,29 +31,14 @@ st.markdown(
         background-color: #F8FAFC;
     }
     
-    /* 컴퓨터 모니터 해상도별 반응형 화면 폭 & 패딩 자동 조절 */
+    /* 컴퓨터 모니터 해상도별 반응형 화면 폭 & 패딩 최적화 */
     .block-container {
         padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
-        padding-left: clamp(1rem, 2vw, 2.5rem) !important;
-        padding-right: clamp(1rem, 2vw, 2.5rem) !important;
-        max-width: 98% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        max-width: 100% !important;
         margin: 0 auto !important;
-    }
-
-    /* 대형 모니터(2200px 이상)에서 차트 과도 늘어남 방지 및 최적화 */
-    @media (min-width: 2200px) {
-        .block-container {
-            max-width: 1920px !important;
-        }
-    }
-
-    /* 노트북/중소형 화면(1400px 이하) 여백 축소로 화면 활용 극대화 */
-    @media (max-width: 1400px) {
-        .block-container {
-            padding-left: 0.8rem !important;
-            padding-right: 0.8rem !important;
-        }
     }
 
     /* 메트릭 카드 (선명한 입체 그림자 + 테두리 라인) */
@@ -65,13 +50,15 @@ st.markdown(
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
     }
 
-    /* 차트 영역 카드화 (선명한 입체 그림자 + 테두리 라인) */
+    /* 차트 영역 카드화 (가로 스크롤바 방지 및 반응형 밀착) */
     div[data-testid="stPlotlyChart"] {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 12px !important;
-        padding: 14px !important;
+        padding: 12px !important;
         box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
+        overflow: hidden !important;
+        width: 100% !important;
     }
 
     /* 탭(Tab) 메뉴 레이아웃 */
@@ -95,7 +82,7 @@ st.markdown(
     button[data-baseweb="tab"] *,
     button[data-baseweb="tab"] p,
     button[data-baseweb="tab"] span {
-        font-size: 22px !important;
+        font-size: 20px !important;
         font-weight: 800 !important;
         color: #003399 !important;
     }
@@ -118,13 +105,13 @@ st.markdown(
     div[data-testid="stMetricLabel"] p,
     [data-testid="stMetric"] label,
     [data-testid="stMetric"] label * {
-        font-size: 20px !important;
+        font-size: 19px !important;
         font-weight: 800 !important;
         color: #003399 !important;
     }
     
     div[data-testid="stMetricValue"] * {
-        font-size: 28px !important;
+        font-size: 26px !important;
         font-weight: 900 !important;
         color: #0F172A !important;
     }
@@ -145,7 +132,7 @@ st.markdown(
     /* 구분선 및 알림 박스 */
     hr {
         border-top: 1px solid #CBD5E1 !important;
-        margin: 2rem 0 !important;
+        margin: 1.8rem 0 !important;
     }
 
     div[data-testid="stNotification"] {
@@ -199,15 +186,15 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 차트 스타일링 (가독성 & 선명도 극대화 버젼)
+# 차트 스타일링 (반응형 짤림 방지 및 선명도 극대화 버젼)
 def apply_chart_style(
     fig,
     x_series=None,
     max_val=None,
-    text_size=20,
-    x_size=19,
-    y_size=17,
-    title_size=22,
+    text_size=18,
+    x_size=17,
+    y_size=15,
+    title_size=20,
     is_group=False,
     force_bar_width=False,
 ):
@@ -222,14 +209,14 @@ def apply_chart_style(
     if not is_group:
         fig.update_traces(marker_color="#003399")
 
-    # 2. X축 (하단 문의 항목명) 강제 선명화
+    # 2. X축 (하단 문의 항목명) 강제 선명화 및 여백 자동 맞춤
     if x_series is not None:
         unique_x = [str(x) for x in x_series.unique() if pd.notna(x)]
         n_cats = len(unique_x)
 
         if not is_group:
             if force_bar_width:
-                fig.update_traces(width=0.4)
+                fig.update_traces(width=0.45)
             else:
                 bar_width = min(0.6, 0.15 * n_cats)
                 fig.update_traces(width=bar_width)
@@ -240,30 +227,39 @@ def apply_chart_style(
             ticktext=[f"<b style='color:#0F172A;'>{x}</b>" for x in unique_x],
             tickfont=dict(size=x_size, color="#0F172A", family="Pretendard"),
             title_text="",
+            automargin=True,
         )
     else:
         fig.update_xaxes(
             tickfont=dict(size=x_size, color="#0F172A", family="Pretendard"),
             title_text="",
+            automargin=True,
         )
 
     # 3. Y축 수치 설정
     fig.update_yaxes(
         tickfont=dict(size=y_size, color="#334155", family="Pretendard"),
         title_font=dict(size=y_size, color="#334155", family="Pretendard"),
+        automargin=True,
     )
 
-    # 4. 레이아웃 폰트 고대비 설정
+    # 4. 레이아웃 폰트 고대비 및 마진 최적화
     layout_args = dict(
         font=dict(family="Pretendard", color="#0F172A"),
         title_font=dict(size=title_size, color="#003399", family="Pretendard"),
-        margin=dict(t=70, b=70, l=50, r=50),
+        margin=dict(t=60, b=50, l=40, r=40),
+        autosize=True,
     )
 
     if not is_group:
         layout_args["showlegend"] = False
     else:
         layout_args["legend"] = dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5,
             font=dict(size=x_size, color="#0F172A", family="Pretendard"),
             title_text="",
         )
@@ -273,6 +269,7 @@ def apply_chart_style(
             range=[0, max_val * 1.38],
             tickfont=dict(size=y_size, color="#334155", family="Pretendard"),
             title_font=dict(size=y_size, color="#334155", family="Pretendard"),
+            automargin=True,
         )
 
     fig.update_layout(**layout_args)
@@ -564,17 +561,22 @@ if cs_sheets_dict:
                 fig_pie.update_traces(
                     textinfo="percent+label",
                     textposition="inside",
-                    textfont=dict(size=18, color="#FFFFFF", family="Pretendard"),
+                    textfont=dict(size=16, color="#FFFFFF", family="Pretendard"),
                 )
+                # 도넛 차트 범례를 하단(horizontal)으로 이동시켜 글자 짤림 방지
                 fig_pie.update_layout(
                     font=dict(family="Pretendard", color="#0F172A"),
-                    title_font=dict(
-                        size=22, color="#003399", family="Pretendard"
-                    ),
+                    title_font=dict(size=20, color="#003399", family="Pretendard"),
                     legend=dict(
-                        font=dict(size=20, color="#0F172A", family="Pretendard")
+                        orientation="h",
+                        yanchor="top",
+                        y=-0.08,
+                        xanchor="center",
+                        x=0.5,
+                        font=dict(size=16, color="#0F172A", family="Pretendard"),
                     ),
-                    margin=dict(t=80, b=50, l=40, r=40),
+                    margin=dict(t=60, b=80, l=20, r=20),
+                    autosize=True,
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
             with col2:
@@ -612,7 +614,6 @@ if cs_sheets_dict:
             )
             m2.metric("📌 최다 접수 지역", f"{top_res_region}")
 
-            # O열 (OB) 수치 정밀 추출 합산
             ob_col = None
             for col_candidate in df.columns:
                 if str(col_candidate).strip().upper() == "OB":
@@ -757,18 +758,18 @@ if cs_sheets_dict:
 
             with c4:
                 st.markdown(
-                    """<div style="font-size: 20px; font-weight: 800; color: #003399; margin-bottom: 8px;">🏷️ 해지완료 가맹 상품</div>""",
+                    """<div style="font-size: 19px; font-weight: 800; color: #003399; margin-bottom: 8px;">🏷️ 해지완료 가맹 상품</div>""",
                     unsafe_allow_html=True,
                 )
                 if prod_counts:
                     for k, v in prod_counts.items():
                         st.markdown(
-                            f"""<div style="font-size: 1.5rem; font-weight: 600; line-height: 1.4; color: #0F172A;">• {k}: {v:,}건</div>""",
+                            f"""<div style="font-size: 1.4rem; font-weight: 600; line-height: 1.4; color: #0F172A;">• {k}: {v:,}건</div>""",
                             unsafe_allow_html=True,
                         )
                 else:
                     st.markdown(
-                        """<div style="font-size: 1.5rem; font-weight: 600; color: #0F172A;">-</div>""",
+                        """<div style="font-size: 1.4rem; font-weight: 600; color: #0F172A;">-</div>""",
                         unsafe_allow_html=True,
                     )
 
