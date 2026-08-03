@@ -307,11 +307,10 @@ if cs_sheets_dict:
     if cat_col:
         df = df.dropna(subset=[cat_col])
         
-    # 순서 변경: 1. 인입 비중, 2. 주차별 차트, 3. 해지 세부 분석, 4. 인사이트 리포트
     tab1, tab2, tab3, tab4 = st.tabs([
-        f"🍩 {display_month_sheet} 마감 CS 인입 비중 & CS 예약 현황",
-        "📅 주차별 개별 차트 (1주차~4주차)", 
-        f"🚨 {display_month_sheet} 해지OB 세부 분석",
+        f"🍩 {display_month_sheet} CS 인입 비중 & 예약 현황",
+        "📅 주차별 CS 인입 현황",
+        f"🚨 {display_month_sheet} 해지 OB 세부 분석",
         "🤖 AI 인사이트 리포트"
     ])
     
@@ -373,7 +372,7 @@ if cs_sheets_dict:
             st.warning(f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수 없습니다.")
 
     with tab2:
-        st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
+        st.subheader(f"📅 주차별 CS 인입 현황")
         weeks = ['1주차', '2주차', '3주차', '4주차']
         col_left, col_right = st.columns(2)
         
