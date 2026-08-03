@@ -563,8 +563,9 @@ if cs_sheets_dict:
                     textposition="inside",
                     textfont=dict(size=16, color="#FFFFFF", family="Pretendard"),
                 )
-                # 도넛 차트 범례를 하단(horizontal)으로 이동시켜 글자 짤림 방지
+                # 도넛 차트 높이(height=500) 및 범례 폰트 확대(size=18, color=#0F172A)
                 fig_pie.update_layout(
+                    height=500,
                     font=dict(family="Pretendard", color="#0F172A"),
                     title_font=dict(size=20, color="#003399", family="Pretendard"),
                     legend=dict(
@@ -573,7 +574,7 @@ if cs_sheets_dict:
                         y=-0.08,
                         xanchor="center",
                         x=0.5,
-                        font=dict(size=16, color="#0F172A", family="Pretendard"),
+                        font=dict(size=18, color="#0F172A", family="Pretendard"),
                     ),
                     margin=dict(t=60, b=80, l=20, r=20),
                     autosize=True,
