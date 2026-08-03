@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 차트 전체화면(확대) 시 글자 강제 비례 확대 CSS (tspan 포함)
+# 2. Pretendard 폰트 전면 적용 + [빔 프로젝터용] 전체화면 글자 파격 확대 CSS
 st.markdown(
     """
     <style>
@@ -61,21 +61,21 @@ st.markdown(
         width: 100% !important;
     }
 
-    /* 🔥 [핵심 수정] 전체화면(Full Screen) 확대 시 모든 Plotly SVG 텍스트 & tspan 강제 확대 🔥 */
+    /* 📢 [빔 프로젝터 특화] 차트 전체화면(Full Screen) 확대 시 초대형 폰트 강제 적용 */
     
-    /* 1. X축 하단 항목명 (가맹, 기사앱, 정산 등) 전체화면 시 26px 확대 */
+    /* 1. X축 하단 문의 항목명 (가맹, 기사앱, 정산 등) -> 초대형 38px */
     :fullscreen svg .xtick text,
     :fullscreen svg .xtick text *,
     :fullscreen svg .xtick tspan,
     :-webkit-full-screen svg .xtick text,
     :-webkit-full-screen svg .xtick text *,
     :-webkit-full-screen svg .xtick tspan {
-        font-size: 26px !important;
+        font-size: 38px !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
-    /* 2. 막대 상단 수치 (25건, 13건 등) 전체화면 시 28px 확대 */
+    /* 2. 막대 상단 건수 수치 (584건, 25건 등) -> 초대형 42px */
     :fullscreen svg .bartext,
     :fullscreen svg .bartext *,
     :fullscreen svg .textpoint text,
@@ -86,44 +86,44 @@ st.markdown(
     :-webkit-full-screen svg .textpoint text,
     :-webkit-full-screen svg .textpoint text *,
     :-webkit-full-screen svg .textpoint tspan {
-        font-size: 28px !important;
+        font-size: 42px !important;
         font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
-    /* 3. Y축 세로 수치 (0, 5, 10, 15...) 전체화면 시 22px 확대 */
+    /* 3. Y축 세로 수치 (0, 100, 200...) -> 30px */
     :fullscreen svg .ytick text,
     :fullscreen svg .ytick text *,
     :fullscreen svg .ytick tspan,
     :-webkit-full-screen svg .ytick text,
     :-webkit-full-screen svg .ytick text *,
     :-webkit-full-screen svg .ytick tspan {
-        font-size: 22px !important;
+        font-size: 30px !important;
         font-weight: 800 !important;
         fill: #334155 !important;
     }
 
-    /* 4. 차트 제목 전체화면 시 32px 확대 */
+    /* 4. 차트 타이틀 제목 -> 초대형 45px */
     :fullscreen svg .gtitle,
     :fullscreen svg .gtitle *,
     :fullscreen svg .gtitle tspan,
     :-webkit-full-screen svg .gtitle,
     :-webkit-full-screen svg .gtitle *,
     :-webkit-full-screen svg .gtitle tspan {
-        font-size: 32px !important;
+        font-size: 45px !important;
         font-weight: 900 !important;
         fill: #003399 !important;
     }
 
-    /* 5. 범례 (Legend) 전체화면 시 22px 확대 */
+    /* 5. 차트 범례 (Legend) -> 32px */
     :fullscreen svg .legendtext,
     :fullscreen svg .legendtext *,
     :fullscreen svg .legendtext tspan,
     :-webkit-full-screen svg .legendtext,
     :-webkit-full-screen svg .legendtext *,
     :-webkit-full-screen svg .legendtext tspan {
-        font-size: 22px !important;
-        font-weight: 800 !important;
+        font-size: 32px !important;
+        font-weight: 900 !important;
         fill: #0F172A !important;
     }
 
@@ -252,7 +252,7 @@ BLUE_PIE_COLORS = [
 BLUE_GROUP_COLORS = ["#003399", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]
 
 
-# 차트 스타일링 (기본 창 모드에서의 스타일링)
+# 차트 스타일링 (기본 창 모드 스타일)
 def apply_chart_style(
     fig,
     x_series=None,
