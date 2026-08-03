@@ -266,7 +266,7 @@ def apply_chart_style(
 def clean_data_text(df):
     if df.empty:
         return df
-    df.columns = [str(c).replace("해제", "해지") for c in df.columns]
+    df.columns = [str(c).strip().replace("해제", "해지") for c in df.columns]
     for col in df.columns:
         if df[col].dtype == "object":
             df[col] = df[col].astype(str).str.replace("해제", "해지")
@@ -597,12 +597,21 @@ if cs_sheets_dict:
             )
             m2.metric("📌 최다 접수 지역", f"{top_res_region}")
 
-            # OB 컬럼 숫자 합산 로직으로 변경 (단순 행 개수가 아닌 O열 숫자 합계 계산)
-            ob_cnt = (
-                int(pd.to_numeric(df["OB"], errors="coerce").fillna(0).sum())
-                if "OB" in df.columns
-                else 0
-            )
+            # O열 (OB) 컬럼 유연 탐색 및 셀 내부 수치 정밀 추출 합산
+            ob_col = None
+            for col_candidate in df.columns:
+                if str(col_candidate).strip().upper() == "OB":
+                    ob_col = col_candidate
+                    break
+
+            if ob_col:
+                ob_series = df[ob_col].astype(str).str.extract(r"(\d+)")[0]
+                ob_cnt = int(
+                    pd.to_numeric(ob_series, errors="coerce").fillna(0).sum()
+                )
+            else:
+                ob_cnt = 0
+
             m3.metric("📞 총 OB 진행 건수", f"{ob_cnt:,} 건")
 
             r_col1, r_col2 = st.columns(2)
@@ -660,7 +669,7 @@ if cs_sheets_dict:
                 " 없습니다."
             )
 
-  # TAB 2: 주차별 CS 인입 현황
+    # TAB 2: 주차별 CS 인입 현황
     with tab2:
         st.subheader(f"📅 {display_month_sheet} 주차별 CS 인입 현황 (문의별)")
 
@@ -713,7 +722,7 @@ if cs_sheets_dict:
                 else:
                     st.info(f"{week_name} 데이터가 존재하지 않습니다.")
 
-  # TAB 3: 해지 OB 세부 분석
+    # TAB 3: 해지 OB 세부 분석
     with tab3:
         st.subheader(
             f"🚨 {display_month_sheet} 해지OB 세부 분석 (실 해지 완료건만 반영)"
@@ -892,7 +901,7 @@ if cs_sheets_dict:
                 " 없습니다."
             )
 
-  # TAB 4: AI 인사이트 리포트
+    # TAB 4: AI 인사이트 리포트
     with tab4:
         st.subheader(f"🤖 {display_month_sheet} AI 자동 생성 종합 분석 보고서")
         if cat_col and not df.empty:
