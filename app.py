@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# 2. Pretendard 폰트 전면 적용 + 선명한 그림자(Shadow) 및 테두리 CSS
+# 2. Pretendard 폰트 전면 적용 + 모니터 사양별 반응형 CSS 적용
 st.markdown(
     """
     <style>
@@ -31,13 +31,29 @@ st.markdown(
         background-color: #F8FAFC;
     }
     
-    /* 화면 폭 제한 제거 */
+    /* 컴퓨터 모니터 해상도별 반응형 화면 폭 & 패딩 자동 조절 */
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 1.2rem !important;
         padding-bottom: 2rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-        max-width: 100% !important;
+        padding-left: clamp(1rem, 2vw, 2.5rem) !important;
+        padding-right: clamp(1rem, 2vw, 2.5rem) !important;
+        max-width: 98% !important;
+        margin: 0 auto !important;
+    }
+
+    /* 대형 모니터(2200px 이상)에서 차트 과도 늘어남 방지 및 최적화 */
+    @media (min-width: 2200px) {
+        .block-container {
+            max-width: 1920px !important;
+        }
+    }
+
+    /* 노트북/중소형 화면(1400px 이하) 여백 축소로 화면 활용 극대화 */
+    @media (max-width: 1400px) {
+        .block-container {
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }
     }
 
     /* 메트릭 카드 (선명한 입체 그림자 + 테두리 라인) */
@@ -483,7 +499,6 @@ if cs_sheets_dict:
         else:
             df_c_7 = df_c_month_raw.copy()
 
-    # 변수 스코프 안전 초기화 (Tab 4 예외 방지)
     total_cancel_raw = len(df_c_month_raw) if not df_c_month_raw.empty else 0
     completed_cnt = len(df_c_7) if not df_c_7.empty else 0
     cancelled_cnt = 0
@@ -597,7 +612,7 @@ if cs_sheets_dict:
             )
             m2.metric("📌 최다 접수 지역", f"{top_res_region}")
 
-            # O열 (OB) 컬럼 유연 탐색 및 셀 내부 수치 정밀 추출 합산
+            # O열 (OB) 수치 정밀 추출 합산
             ob_col = None
             for col_candidate in df.columns:
                 if str(col_candidate).strip().upper() == "OB":
