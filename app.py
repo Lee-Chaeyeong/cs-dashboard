@@ -61,11 +61,7 @@ st.markdown(
         width: 100% !important;
     }
 
-    /* ==========================================================================
-       🔥 [우측 상단 전체화면 확대 버튼 클릭 시에만 작동하는 초대형 폰트 CSS] 🔥
-       ========================================================================== */
-
-    /* 1. 확대 시 X축 하단 항목명 (가맹, 기사앱, 정산 등) -> 38px 초대형 */
+    /* 🔥 [우측 상단 전체화면 확대 버튼 클릭 시에만 작동하는 초대형 폰트 CSS] 🔥 */
     :fullscreen svg .xtick text,
     :fullscreen svg .xtick text *,
     :fullscreen svg .xtick tspan,
@@ -80,7 +76,6 @@ st.markdown(
         fill: #0F172A !important;
     }
 
-    /* 2. 확대 시 막대 상단 수치 (584건, 26건 등) -> 42px 초대형 */
     :fullscreen svg .bartext,
     :fullscreen svg .bartext *,
     :fullscreen svg .bartext tspan,
@@ -104,7 +99,6 @@ st.markdown(
         fill: #0F172A !important;
     }
 
-    /* 3. 확대 시 Y축 세로 수치 (0, 100, 200...) -> 28px */
     :fullscreen svg .ytick text,
     :fullscreen svg .ytick text *,
     :fullscreen svg .ytick tspan,
@@ -119,7 +113,6 @@ st.markdown(
         fill: #334155 !important;
     }
 
-    /* 4. 확대 시 차트 제목 -> 40px 초대형 */
     :fullscreen svg .gtitle,
     :fullscreen svg .gtitle *,
     :fullscreen svg .gtitle tspan,
@@ -134,7 +127,6 @@ st.markdown(
         fill: #003399 !important;
     }
 
-    /* 5. 확대 시 범례 (Legend) -> 30px */
     :fullscreen svg .legendtext,
     :fullscreen svg .legendtext *,
     :fullscreen svg .legendtext tspan,
@@ -244,7 +236,7 @@ st.caption(
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력",
-    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1923992354#gid=1923992354",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=2059705078#gid=2059705078",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help=(
         "구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야"
@@ -424,14 +416,23 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         df_sheet = clean_data_text(df_sheet)
         cs_sheets_dict[s] = df_sheet
 
-    df_res_all = pd.DataFrame()
-    if "CS예약(NEW)" in sheets:
-        df_res_all = pd.read_excel(io.BytesIO(excel_bytes), sheet_name="CS예약(NEW)")
-        df_res_all = clean_data_text(df_res_all)
-        if "예약시간" in df_res_all.columns:
-            df_res_all["예약시간_dt"] = pd.to_datetime(
-                df_res_all["예약시간"], errors="coerce"
-            )
+    # 🔥 [수정] CS예약(NEW) 및 CS예약종료 시트 병합 로직
+    df_res_list = []
+    for s_res in ["CS예약(NEW)", "CS예약종료"]:
+        if s_res in sheets:
+            df_tmp = pd.read_excel(io.BytesIO(excel_bytes), sheet_name=s_res)
+            df_tmp = clean_data_text(df_tmp)
+            if "예약시간" in df_tmp.columns:
+                df_tmp["예약시간_dt"] = pd.to_datetime(
+                    df_tmp["예약시간"], errors="coerce"
+                )
+            df_res_list.append(df_tmp)
+
+    df_res_all = (
+        pd.concat(df_res_list, ignore_index=True)
+        if df_res_list
+        else pd.DataFrame()
+    )
 
     df_c_all = pd.DataFrame()
     for s_name in sheets:
