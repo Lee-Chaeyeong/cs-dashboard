@@ -179,7 +179,7 @@ st.markdown(
         height: 3px !important;
     }
 
-    /* 메트릭 라벨 (20px + 볼드체 + 찐파랑 #003399) */
+    /* 메트릭 라벨 (19px + 볼드체 + 찐파랑 #003399) */
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] *,
     div[data-testid="stMetricLabel"] p,
@@ -236,7 +236,7 @@ st.caption(
 st.sidebar.header("🔗 데이터 연동 설정")
 gsheet_url = st.sidebar.text_input(
     "구글 시트 주소 (URL) 입력",
-    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=2059705078#gid=2059705078",
+    value="https://docs.google.com/spreadsheets/d/1K_CnHTDs00TxDbdmIkpDmOmKdjgC6dDir5yV75GuKIs/edit?gid=1792483017#gid=1792483017",
     placeholder="https://docs.google.com/spreadsheets/d/...",
     help=(
         "구글 시트 [공유] 설정이 '링크가 있는 모든 사용자'로 되어있어야"
@@ -383,7 +383,7 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         excel_bytes = uploaded_file.getvalue()
 
     if not excel_bytes:
-        return {}, pd.DataFrame(), pd.DataFrame(), []
+        return {}, pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), []
 
     xls_dict = pd.read_excel(
         io.BytesIO(excel_bytes), sheet_name=None, header=None
@@ -416,7 +416,7 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         df_sheet = clean_data_text(df_sheet)
         cs_sheets_dict[s] = df_sheet
 
-    # 🔥 [수정] CS예약(NEW) 및 CS예약종료 시트 병합 로직
+    # CS예약(NEW) 및 CS예약종료 시트 병합 로직
     df_res_list = []
     for s_res in ["CS예약(NEW)", "CS예약종료"]:
         if s_res in sheets:
@@ -433,6 +433,12 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
         if df_res_list
         else pd.DataFrame()
     )
+
+    # 채널톡 시트 로드 로직
+    df_ch_all = pd.DataFrame()
+    if "채널톡" in sheets:
+        df_ch_all = pd.read_excel(io.BytesIO(excel_bytes), sheet_name="채널톡")
+        df_ch_all = clean_data_text(df_ch_all)
 
     df_c_all = pd.DataFrame()
     for s_name in sheets:
@@ -464,10 +470,10 @@ def load_all_workbook_data(gsheet_url, uploaded_file):
                     )
                 break
 
-    return cs_sheets_dict, df_res_all, df_c_all, cs_sheets
+    return cs_sheets_dict, df_res_all, df_c_all, df_ch_all, cs_sheets
 
 
-cs_sheets_dict, df_res_all, df_c_all, available_cs_sheets = (
+cs_sheets_dict, df_res_all, df_c_all, df_ch_all, available_cs_sheets = (
     load_all_workbook_data(gsheet_url, uploaded_file)
 )
 
@@ -526,6 +532,7 @@ if cs_sheets_dict:
                     })
             dynamic_week_ranges.sort(key=lambda x: x["min_d"])
 
+    # CS 예약 데이터 월별 추출
     df_res_7 = pd.DataFrame()
     if not df_res_all.empty:
         if (
@@ -538,6 +545,22 @@ if cs_sheets_dict:
                 (df_res_all["예약시간_dt"].dt.year == target_year)
                 & (df_res_all["예약시간_dt"].dt.month == target_month)
             ]
+
+    # 채널톡 데이터 월별 추출 (B열 / CS비고)
+    df_ch_7 = pd.DataFrame()
+    if not df_ch_all.empty:
+        ch_bg_col = None
+        for col in df_ch_all.columns:
+            if "CS비고" in str(col):
+                ch_bg_col = col
+                break
+        if not ch_bg_col and len(df_ch_all.columns) >= 2:
+            ch_bg_col = df_ch_all.columns[1]  # B열
+
+        if ch_bg_col:
+            df_ch_7 = df_ch_all[
+                df_ch_all[ch_bg_col].astype(str).str.strip() == selected_month_sheet
+            ].copy()
 
     df_c_month_raw = pd.DataFrame()
     df_c_7 = pd.DataFrame()
@@ -602,7 +625,7 @@ if cs_sheets_dict:
 
     st.success(
         f"✅ [{display_month_sheet}] CS 인입({len(df):,}건) / CS예약({len(df_res_7):,}건) /"
-        f" 실해지 완료({completed_cnt:,}건) 데이터 분석 완료!"
+        f" 채널톡({len(df_ch_7):,}건) / 실해지 완료({completed_cnt:,}건) 데이터 분석 완료!"
     )
 
     week_col = "주차" if "주차" in df.columns else None
@@ -695,15 +718,18 @@ if cs_sheets_dict:
 
         st.markdown("---")
         st.subheader(f"📅 {display_month_sheet} CS 예약 & OB 현황")
-        if not df_res_7.empty:
-            m1, m2, m3 = st.columns(3)
+        if not df_res_7.empty or not df_ch_7.empty:
+            # 채널톡 상담 건수 포함 4개 메트릭 배치
+            m1, m2, m3, m4 = st.columns(4)
             m1.metric("📄 CS 상담 예약 건수", f"{len(df_res_7):,} 건")
+            m2.metric("💬 채널톡 상담 건수", f"{len(df_ch_7):,} 건")
+
             top_res_region = (
                 df_res_7["운행 지역"].mode()[0]
                 if "운행 지역" in df_res_7.columns and not df_res_7["운행 지역"].empty
                 else "부산"
             )
-            m2.metric("📌 최다 접수 지역", f"{top_res_region}")
+            m3.metric("📌 최다 접수 지역", f"{top_res_region}")
 
             ob_col = None
             for col_candidate in df.columns:
@@ -719,11 +745,11 @@ if cs_sheets_dict:
             else:
                 ob_cnt = 0
 
-            m3.metric("📞 총 OB 진행 건수", f"{ob_cnt:,} 건")
+            m4.metric("📞 총 OB 진행 건수", f"{ob_cnt:,} 건")
 
             r_col1, r_col2 = st.columns(2)
             with r_col1:
-                if "운행 지역" in df_res_7.columns:
+                if "운행 지역" in df_res_7.columns and not df_res_7.empty:
                     res_reg_df = df_res_7["운행 지역"].value_counts().reset_index()
                     res_reg_df.columns = ["운행 지역", "예약건수"]
                     fig_res_reg = px.bar(
@@ -747,7 +773,7 @@ if cs_sheets_dict:
                     )
                     st.plotly_chart(fig_res_reg, use_container_width=True)
             with r_col2:
-                if "문의 사항" in df_res_7.columns:
+                if "문의 사항" in df_res_7.columns and not df_res_7.empty:
                     res_inq_df = df_res_7["문의 사항"].value_counts().reset_index()
                     res_inq_df.columns = ["문의 사항", "예약건수"]
                     fig_res_inq = px.bar(
@@ -772,7 +798,7 @@ if cs_sheets_dict:
                     st.plotly_chart(fig_res_inq, use_container_width=True)
         else:
             st.warning(
-                f"CS예약(NEW) 시트에서 {display_month_sheet} 예약 데이터를 찾을 수"
+                f"CS예약 및 채널톡 시트에서 {display_month_sheet} 데이터를 찾을 수"
                 " 없습니다."
             )
 
@@ -1025,7 +1051,7 @@ if cs_sheets_dict:
 
             st.markdown(f"""### 📌 {display_month_sheet} CS 종합 핵심 요약
 1. **인입 콜 최다 문의**: **[{top_cat}]** 분야가 **{top_pct}% ({top_val:,}건 / 총 {total_calls:,}건)**으로 전체 1위를 기록했습니다.
-2. **상담 예약 현황**: **{display_month_sheet} 총 {len(df_res_7):,}건**의 상담 예약이 인입되었습니다.
+2. **상담 및 채널톡 현황**: **{display_month_sheet} 총 {len(df_res_7):,}건**의 CS 예약과 **{len(df_ch_7):,}건**의 채널톡 상담이 인입되었습니다.
 3. **해지 OB 현황**: **{display_month_sheet} 총 해지 접수 {total_cancel_raw:,}건** 중 **{completed_cnt:,}건 최종 실 해지 완료**, **{cancelled_cnt:,}건 해지 취소(가맹유지 방어)**를 달성했습니다.""")
 else:
     st.info(
